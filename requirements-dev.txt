@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest==9.2.0
+httpx==0.28.1
+opentimelineio==0.18.1
+otio-fcp-adapter==1.0.0

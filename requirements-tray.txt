@@ -1,0 +1,3 @@
+# Windows tray launcher (pystray is LGPL-3.0: shipped as replaceable .py files, see docs/LICENSES.md)
+pystray==0.19.5
+pillow==13.0.0

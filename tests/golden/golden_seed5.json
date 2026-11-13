@@ -1,0 +1,142 @@
+{
+  "T001_chorus": {
+    "rate": 1.0,
+    "reason": "AMBIGUOUS",
+    "song_position_s": 164.693695,
+    "status": "LOW",
+    "video_track": 5
+  },
+  "T002_silent": {
+    "rate": null,
+    "reason": "NO_AUDIO",
+    "song_position_s": null,
+    "status": "UNSYNCED",
+    "video_track": null
+  },
+  "T003_room": {
+    "rate": 1.0,
+    "reason": null,
+    "song_position_s": 47.549992,
+    "status": "MEDIUM",
+    "video_track": 2
+  },
+  "T004_preroll": {
+    "rate": 1.0,
+    "reason": null,
+    "song_position_s": 89.70813,
+    "status": "HIGH",
+    "video_track": 1
+  },
+  "T005_clean": {
+    "rate": 1.0,
+    "reason": "AMBIGUOUS",
+    "song_position_s": 155.114822,
+    "status": "LOW",
+    "video_track": 2
+  },
+  "T006_unrelated": {
+    "rate": null,
+    "reason": "NO_MATCH",
+    "song_position_s": null,
+    "status": "UNSYNCED",
+    "video_track": null
+  },
+  "T007_avoffset": {
+    "rate": 1.0,
+    "reason": null,
+    "song_position_s": 144.43869,
+    "status": "MEDIUM",
+    "video_track": 1
+  },
+  "T008_short": {
+    "rate": null,
+    "reason": "TOO_SHORT",
+    "song_position_s": null,
+    "status": "UNSYNCED",
+    "video_track": null
+  },
+  "T009_slowmo": {
+    "rate": 2.0,
+    "reason": "AMBIGUOUS",
+    "song_position_s": 52.92284,
+    "status": "LOW",
+    "video_track": 3
+  },
+  "T010_room": {
+    "rate": 1.0,
+    "reason": null,
+    "song_position_s": 57.170467,
+    "status": "MEDIUM",
+    "video_track": 1
+  },
+  "T011_room": {
+    "rate": 1.0,
+    "reason": "AMBIGUOUS",
+    "song_position_s": 162.9505,
+    "status": "LOW",
+    "video_track": 4
+  },
+  "T012_unrelated": {
+    "rate": null,
+    "reason": "NO_MATCH",
+    "song_position_s": null,
+    "status": "UNSYNCED",
+    "video_track": null
+  },
+  "T013_chorus": {
+    "rate": 1.0,
+    "reason": "AMBIGUOUS",
+    "song_position_s": 184.875427,
+    "status": "LOW",
+    "video_track": 1
+  },
+  "T014_slowmo": {
+    "rate": 2.0,
+    "reason": "AMBIGUOUS",
+    "song_position_s": 156.455215,
+    "status": "LOW",
+    "video_track": 3
+  },
+  "T015_room": {
+    "rate": 1.0,
+    "reason": null,
+    "song_position_s": 35.103508,
+    "status": "HIGH",
+    "video_track": 1
+  },
+  "T016_noaudio": {
+    "rate": null,
+    "reason": "NO_AUDIO",
+    "song_position_s": null,
+    "status": "UNSYNCED",
+    "video_track": null
+  },
+  "T017_clean": {
+    "rate": 1.0,
+    "reason": null,
+    "song_position_s": 15.594875,
+    "status": "HIGH",
+    "video_track": 1
+  },
+  "T018_room": {
+    "rate": 1.0,
+    "reason": null,
+    "song_position_s": 66.941299,
+    "status": "MEDIUM",
+    "video_track": 2
+  },
+  "T019_noaudio": {
+    "rate": null,
+    "reason": "NO_AUDIO",
+    "song_position_s": null,
+    "status": "UNSYNCED",
+    "video_track": null
+  },
+  "T020_preroll": {
+    "rate": 1.0,
+    "reason": null,
+    "song_position_s": 0.016562,
+    "status": "HIGH",
+    "video_track": 1
+  }
+}

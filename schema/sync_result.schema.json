@@ -1,0 +1,565 @@
+{
+  "$defs": {
+    "Alternate": {
+      "additionalProperties": false,
+      "properties": {
+        "song_position_s": {
+          "title": "Song Position S",
+          "type": "number"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "rate": {
+          "default": 1.0,
+          "title": "Rate",
+          "type": "number"
+        }
+      },
+      "required": [
+        "song_position_s",
+        "score"
+      ],
+      "title": "Alternate",
+      "type": "object"
+    },
+    "ClipResult": {
+      "additionalProperties": false,
+      "properties": {
+        "clip_id": {
+          "title": "Clip Id",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "duration_s": {
+          "title": "Duration S",
+          "type": "number"
+        },
+        "source_fps": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Fps"
+        },
+        "has_audio": {
+          "title": "Has Audio",
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Reason"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reason_detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason Detail"
+        },
+        "song_position_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Song Position S"
+        },
+        "song_position_ticks": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Song Position Ticks"
+        },
+        "source_in_s": {
+          "default": 0.0,
+          "title": "Source In S",
+          "type": "number"
+        },
+        "source_in_ticks": {
+          "default": "0",
+          "title": "Source In Ticks",
+          "type": "string"
+        },
+        "rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rate"
+        },
+        "confidence": {
+          "$ref": "#/$defs/Confidence"
+        },
+        "alternates": {
+          "items": {
+            "$ref": "#/$defs/Alternate"
+          },
+          "title": "Alternates",
+          "type": "array"
+        },
+        "drift": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Drift"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "video_track": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Video Track"
+        },
+        "override": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Override"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "diagnostics": {
+          "$ref": "#/$defs/Diagnostics"
+        }
+      },
+      "required": [
+        "clip_id",
+        "path",
+        "name",
+        "duration_s",
+        "has_audio",
+        "status"
+      ],
+      "title": "ClipResult",
+      "type": "object"
+    },
+    "Confidence": {
+      "additionalProperties": false,
+      "properties": {
+        "score": {
+          "default": 0.0,
+          "title": "Score",
+          "type": "number"
+        },
+        "peak_ratio": {
+          "default": 0.0,
+          "title": "Peak Ratio",
+          "type": "number"
+        },
+        "window_agreement": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Window Agreement"
+        }
+      },
+      "title": "Confidence",
+      "type": "object"
+    },
+    "Diagnostics": {
+      "additionalProperties": false,
+      "properties": {
+        "raw_song_position_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Song Position S"
+        },
+        "av_offset_s": {
+          "default": 0.0,
+          "title": "Av Offset S",
+          "type": "number"
+        },
+        "fine_peak": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fine Peak"
+        },
+        "fine_used": {
+          "default": false,
+          "title": "Fine Used",
+          "type": "boolean"
+        },
+        "audio_rms_dbfs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audio Rms Dbfs"
+        },
+        "frame_snap_error_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Snap Error S"
+        },
+        "windows_evaluated": {
+          "default": 0,
+          "title": "Windows Evaluated",
+          "type": "integer"
+        }
+      },
+      "title": "Diagnostics",
+      "type": "object"
+    },
+    "Drift": {
+      "additionalProperties": false,
+      "description": "Reported, never corrected. ppm > 0: the clip's audio clock runs fast relative to the\nmaster (the clip holds more than one second of audio per second of song), so a clip\naligned at its centre is early at its tail by ppm * 1e-6 * length.\nppm is null when the window fit is unreliable (residual above settings.drift_max_residual_ms).",
+      "properties": {
+        "ppm": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ppm"
+        },
+        "max_error_ms": {
+          "title": "Max Error Ms",
+          "type": "number"
+        },
+        "windows": {
+          "title": "Windows",
+          "type": "integer"
+        },
+        "residual_ms": {
+          "default": 0.0,
+          "title": "Residual Ms",
+          "type": "number"
+        },
+        "reliable": {
+          "default": true,
+          "title": "Reliable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ppm",
+        "max_error_ms",
+        "windows"
+      ],
+      "title": "Drift",
+      "type": "object"
+    },
+    "MasterInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "duration_s": {
+          "title": "Duration S",
+          "type": "number"
+        },
+        "sample_rate": {
+          "title": "Sample Rate",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "duration_s",
+        "sample_rate"
+      ],
+      "title": "MasterInfo",
+      "type": "object"
+    },
+    "Override": {
+      "additionalProperties": false,
+      "description": "Manual correction. Never overwrites engine fields.",
+      "properties": {
+        "song_position_s": {
+          "title": "Song Position S",
+          "type": "number"
+        },
+        "song_position_ticks": {
+          "title": "Song Position Ticks",
+          "type": "string"
+        },
+        "by": {
+          "title": "By",
+          "type": "string"
+        },
+        "at": {
+          "title": "At",
+          "type": "string"
+        },
+        "video_track": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Video Track"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "song_position_s",
+        "song_position_ticks",
+        "by",
+        "at"
+      ],
+      "title": "Override",
+      "type": "object"
+    },
+    "Reason": {
+      "enum": [
+        "NO_AUDIO",
+        "NO_MATCH",
+        "AMBIGUOUS",
+        "TOO_SHORT",
+        "DECODE_ERROR",
+        "NOT_ANALYZED",
+        "ANALYSIS_ERROR"
+      ],
+      "title": "Reason",
+      "type": "string"
+    },
+    "SequenceInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "fps_num": {
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "title": "Fps Den",
+          "type": "integer"
+        },
+        "width": {
+          "default": 3840,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "default": 2160,
+          "title": "Height",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fps_num",
+        "fps_den"
+      ],
+      "title": "SequenceInfo",
+      "type": "object"
+    },
+    "Status": {
+      "enum": [
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "UNSYNCED"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "Summary": {
+      "additionalProperties": false,
+      "properties": {
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        },
+        "HIGH": {
+          "title": "High",
+          "type": "integer"
+        },
+        "MEDIUM": {
+          "title": "Medium",
+          "type": "integer"
+        },
+        "LOW": {
+          "title": "Low",
+          "type": "integer"
+        },
+        "UNSYNCED": {
+          "title": "Unsynced",
+          "type": "integer"
+        },
+        "video_tracks": {
+          "title": "Video Tracks",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "UNSYNCED",
+        "video_tracks"
+      ],
+      "title": "Summary",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "engine_version": {
+      "title": "Engine Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "master": {
+      "$ref": "#/$defs/MasterInfo"
+    },
+    "sequence": {
+      "$ref": "#/$defs/SequenceInfo"
+    },
+    "settings": {
+      "additionalProperties": true,
+      "title": "Settings",
+      "type": "object"
+    },
+    "clips": {
+      "items": {
+        "$ref": "#/$defs/ClipResult"
+      },
+      "title": "Clips",
+      "type": "array"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Summary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "engine_version",
+    "created_at",
+    "master",
+    "sequence",
+    "settings",
+    "clips"
+  ],
+  "title": "SyncResult",
+  "type": "object",
+  "$id": "https://music-video-autosync.local/schema/sync_result-1.0.json"
+}

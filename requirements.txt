@@ -1,0 +1,15 @@
+# Runtime (engine + helper). Exact pins for reproducible builds; licenses in docs/LICENSES.md.
+numpy==2.4.6
+scipy==1.17.1
+pydantic==2.14.3
+pydantic-core==2.50.4
+annotated-types==0.8.0
+typing-extensions==4.16.0
+typing-inspection==0.4.5
+fastapi==0.162.6
+starlette==1.10.0
+anyio==4.16.0
+idna==3.20
+uvicorn==0.54.0
+click==8.5.1
+h11==0.16.0

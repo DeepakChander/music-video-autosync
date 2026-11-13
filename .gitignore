@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+.DS_Store
+# generated test media and run output
+/synthetic/
+/calib/
+*.mov
+*.mp4
+*.wav
+*.mp3
+*.m4a
+sync_result.json
+panel/node_modules/
+packaging/out/
