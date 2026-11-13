@@ -1,0 +1,128 @@
+name: release
+
+# Builds the Windows installer (helper + engine + LGPL FFmpeg + panel .ccx) on a Windows runner,
+# then installs it silently, runs the installed helper through tools/helper_smoke.py (self-test
+# media with known truth, generated and analysed by the frozen helper with the bundled FFmpeg),
+# uninstalls silently and checks that nothing is left. Tags v* also publish a GitHub Release.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build dependencies
+        run: python -m pip install -r requirements-build.txt
+
+      - name: Download LGPL FFmpeg (BtbN/FFmpeg-Builds)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $rel = gh release view latest -R BtbN/FFmpeg-Builds --json assets | ConvertFrom-Json
+          $asset = $rel.assets | Where-Object { $_.name -match '^ffmpeg-n[0-9.]+-latest-win64-lgpl-[0-9.]+\.zip$' } | Sort-Object name -Descending | Select-Object -First 1
+          if (-not $asset) { throw "no win64 LGPL static asset found" }
+          gh release download latest -R BtbN/FFmpeg-Builds -p $asset.name -D ffdl
+          Expand-Archive "ffdl/$($asset.name)" -DestinationPath ffdl
+          $bin = Get-ChildItem ffdl -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+          New-Item -ItemType Directory -Force ffbin | Out-Null
+          Copy-Item $bin.FullName ffbin/
+          Copy-Item (Join-Path $bin.DirectoryName "ffprobe.exe") ffbin/
+          $lic = Get-ChildItem ffdl -Recurse -Filter "LICENSE*" | Select-Object -First 1
+          if ($lic) { Copy-Item $lic.FullName ffbin/LICENSE-FFmpeg.txt }
+          $ver = (& ffbin/ffmpeg.exe -hide_banner -version | Select-Object -First 1)
+          "$ver`nasset: $($asset.name)`nsource: https://github.com/BtbN/FFmpeg-Builds (LGPL build), FFmpeg source: https://ffmpeg.org/download.html" | Set-Content ffbin/FFMPEG_VERSION.txt
+          $cfg = (& ffbin/ffmpeg.exe -hide_banner -buildconf | Out-String)
+          if ($cfg -match "enable-gpl") { throw "FFmpeg build is GPL; an LGPL build is required" }
+          Get-Content ffbin/FFMPEG_VERSION.txt
+
+      - name: Icon
+        run: python packaging/make_icon.py
+      - name: PyInstaller (one-folder)
+        run: pyinstaller --noconfirm --distpath dist --workpath build packaging/autosync.spec
+      - name: Bundle FFmpeg and license files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/MusicVideoAutoSync/ffmpeg | Out-Null
+          Copy-Item ffbin/* dist/MusicVideoAutoSync/ffmpeg/
+          Copy-Item docs/LICENSES.md dist/MusicVideoAutoSync/
+      - name: Frozen engine finds the bundled FFmpeg
+        run: dist\MusicVideoAutoSync\autosync-engine.exe doctor
+      - name: Panel .ccx
+        run: python packaging/build_ccx.py
+
+      - name: Inno Setup installer
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $version = (Get-Content panel/manifest.json | ConvertFrom-Json).version
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$version" "/DDistDir=..\dist\MusicVideoAutoSync" packaging\installer.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+          Get-ChildItem packaging/out
+
+      - name: Silent install (clean-machine smoke)
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem packaging/out -Filter "MusicVideoAutoSync-Setup-*.exe" | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LOG=install.log" -Wait
+          $app = "$env:LOCALAPPDATA\Programs\MusicVideoAutoSync"
+          foreach ($f in "AutoSyncHelper.exe", "autosync-engine.exe", "ffmpeg\ffmpeg.exe", "ffmpeg\ffprobe.exe", "panel\MusicVideoAutoSync_premierepro.ccx", "unins000.exe") {
+            if (-not (Test-Path "$app\$f")) { throw "missing after install: $f" }
+          }
+          if (-not (Test-Path "$env:APPDATA\MusicVideoAutoSync\token")) { throw "pairing token not created" }
+          if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\Music Video AutoSync Helper.lnk")) { throw "start-with-Windows shortcut missing" }
+          "install OK"
+
+      - name: Installed helper end-to-end smoke
+        shell: pwsh
+        run: |
+          $app = "$env:LOCALAPPDATA\Programs\MusicVideoAutoSync"
+          $p = Start-Process "$app\AutoSyncHelper.exe" -ArgumentList "serve" -PassThru
+          Start-Sleep -Seconds 10
+          python tools/helper_smoke.py --count 14 2>&1 | Tee-Object -FilePath smoke.txt
+          $code = $LASTEXITCODE
+          Stop-Process -Id $p.Id -Force
+          Get-Content "$env:APPDATA\MusicVideoAutoSync\logs\helper.log" -Tail 30
+          if ($code -ne 0) { throw "helper smoke failed ($code)" }
+
+      - name: Silent uninstall leaves nothing behind
+        shell: pwsh
+        run: |
+          $app = "$env:LOCALAPPDATA\Programs\MusicVideoAutoSync"
+          Start-Process "$app\unins000.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
+          Start-Sleep -Seconds 5
+          foreach ($d in $app, "$env:APPDATA\MusicVideoAutoSync", "$env:LOCALAPPDATA\MusicVideoAutoSync") {
+            if (Test-Path $d) { throw "left behind: $d" }
+          }
+          if (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\Music Video AutoSync Helper.lnk") { throw "startup shortcut left behind" }
+          "uninstall OK"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MusicVideoAutoSync-windows
+          path: |
+            packaging/out/*.exe
+            packaging/out/*.ccx
+            smoke.txt
+            install.log
+            ffbin/FFMPEG_VERSION.txt
+
+      - name: Publish GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" (Get-ChildItem packaging/out/*.exe).FullName (Get-ChildItem packaging/out/*.ccx).FullName smoke.txt `
+            --title "Music Video AutoSync ${{ github.ref_name }}" --notes-file docs/RELEASE_NOTES.md

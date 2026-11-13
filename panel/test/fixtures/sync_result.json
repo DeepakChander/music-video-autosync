@@ -1,0 +1,1487 @@
+{
+  "schema_version": "1.0",
+  "engine_version": "0.1.0",
+  "created_at": "2026-11-13T00:00:00+05:30",
+  "master": {
+    "path": "D:/shoot/Song Master.wav",
+    "sha256": "947ea7b0882c12d966d8f0e84efd3fad7ccce090f0f74716c49be255b68ae3d9",
+    "duration_s": 214.283312,
+    "sample_rate": 48000
+  },
+  "sequence": {
+    "fps_num": 24000,
+    "fps_den": 1001,
+    "width": 1920,
+    "height": 1080
+  },
+  "settings": {
+    "analysis_sr": 16000,
+    "win_length": 400,
+    "n_fft": 512,
+    "hop_length": 160,
+    "n_mels": 40,
+    "fmin_hz": 80.0,
+    "fmax_hz": 7600.0,
+    "n_mfcc": 20,
+    "onset_weight": 3.0,
+    "silence_dbfs": -70.0,
+    "rates": [
+      1.0,
+      2.0
+    ],
+    "coarse_top_k": 5,
+    "nms_separation_s": 1.0,
+    "min_overlap_s": 2.0,
+    "min_overlap_fraction": 0.4,
+    "fine_search_s": 0.2,
+    "fine_max_segment_s": 30.0,
+    "fine_min_peak": 0.02,
+    "fine_max_shift_s": 0.05,
+    "min_clip_s": 2.0,
+    "window_min_clip_s": 6.0,
+    "min_windows": 3,
+    "max_windows": 5,
+    "agreement_tolerance_frames": 1.0,
+    "drift_max_residual_ms": 1.0,
+    "noise_floor": 0.3,
+    "ambiguity_ratio": 1.15,
+    "high": {
+      "score": 0.45,
+      "peak_ratio": 1.5,
+      "window_agreement": 1.0
+    },
+    "medium": {
+      "score": 0.35,
+      "peak_ratio": 1.15,
+      "window_agreement": 0.6
+    },
+    "high_requires_fine": true,
+    "tie_ratio": 1.005,
+    "pre_roll_policy": "set_in_point"
+  },
+  "clips": [
+    {
+      "clip_id": "ba97c28f13e8b736",
+      "path": "D:/shoot/takes/T001_clean.mov",
+      "name": "T001_clean",
+      "duration_s": 29.5417,
+      "source_fps": "24/1",
+      "has_audio": true,
+      "status": "MEDIUM",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 37.781376,
+      "song_position_ticks": "9598693104000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.9962,
+        "peak_ratio": 1.2782,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 97.780701,
+          "score": 0.7794,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 140.637375,
+          "score": 0.6797,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 196.351028,
+          "score": 0.3795,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 157.780045,
+          "score": 0.3717,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.0,
+        "windows": 5,
+        "residual_ms": 0.0,
+        "reliable": true
+      },
+      "video_track": 3,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 37.781376,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.9544,
+        "fine_used": true,
+        "audio_rms_dbfs": -17.35,
+        "audio_channels": 1,
+        "frame_snap_error_s": 0.006374,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "6e4264aa86e7e778",
+      "path": "D:/shoot/takes/T002_short.mov",
+      "name": "T002_short",
+      "duration_s": 1.4,
+      "source_fps": "25/1",
+      "has_audio": true,
+      "status": "UNSYNCED",
+      "reason": "TOO_SHORT",
+      "reason_detail": "audio is 1.38 s; minimum is 2 s",
+      "song_position_s": null,
+      "song_position_ticks": null,
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": null,
+      "confidence": {
+        "score": 0.0,
+        "peak_ratio": 0.0,
+        "window_agreement": null
+      },
+      "alternates": [],
+      "drift": null,
+      "video_track": null,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": null,
+        "av_offset_s": 0.0,
+        "fine_peak": null,
+        "fine_used": false,
+        "audio_rms_dbfs": -26.0,
+        "audio_channels": 1,
+        "frame_snap_error_s": null,
+        "windows_evaluated": 0
+      }
+    },
+    {
+      "clip_id": "558d3650d78c9b17",
+      "path": "D:/shoot/takes/T003_room.mov",
+      "name": "T003_room",
+      "duration_s": 19.9167,
+      "source_fps": "24/1",
+      "has_audio": true,
+      "status": "HIGH",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 172.423126,
+      "song_position_ticks": "43798010256000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.5926,
+        "peak_ratio": 1.5495,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 52.42445,
+          "score": 0.3824,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 155.280457,
+          "score": 0.3824,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 112.423798,
+          "score": 0.3822,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 189.565796,
+          "score": 0.3675,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.0,
+        "windows": 4,
+        "residual_ms": 0.0,
+        "reliable": true
+      },
+      "video_track": 3,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 172.423126,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.1924,
+        "fine_used": true,
+        "audio_rms_dbfs": -24.02,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.000876,
+        "windows_evaluated": 4
+      }
+    },
+    {
+      "clip_id": "094e952053d0c295",
+      "path": "D:/shoot/takes/T004_corrupt.mov",
+      "name": "T004_corrupt",
+      "duration_s": 0.0,
+      "source_fps": null,
+      "has_audio": false,
+      "status": "UNSYNCED",
+      "reason": "DECODE_ERROR",
+      "reason_detail": "ffprobe: [mov,mp4,m4a,3gp,3g2,mj2] moov atom not found\n/private/tmp/claude-502/-Users-deepakchander-Downloads-Priemer/274fb5f2-e7ef-4ef4-9a64-a531605c0337/scratchpad/fx/takes/T004_corrupt.mov: Invalid data found when processing input",
+      "song_position_s": null,
+      "song_position_ticks": null,
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": null,
+      "confidence": {
+        "score": 0.0,
+        "peak_ratio": 0.0,
+        "window_agreement": null
+      },
+      "alternates": [],
+      "drift": null,
+      "video_track": null,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": null,
+        "av_offset_s": 0.0,
+        "fine_peak": null,
+        "fine_used": false,
+        "audio_rms_dbfs": null,
+        "audio_channels": 0,
+        "frame_snap_error_s": null,
+        "windows_evaluated": 0
+      }
+    },
+    {
+      "clip_id": "a7d884a9c050bb87",
+      "path": "D:/shoot/takes/T005_room.mov",
+      "name": "T005_room",
+      "duration_s": 20.5622,
+      "source_fps": "24000/1001",
+      "has_audio": true,
+      "status": "MEDIUM",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 99.635452,
+      "song_position_ticks": "25310461176000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.5975,
+        "peak_ratio": 1.4385,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 39.636124,
+          "score": 0.4154,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 142.492126,
+          "score": 0.318,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": -0.2,
+        "max_error_ms": 0.008,
+        "windows": 5,
+        "residual_ms": 0.003,
+        "reliable": true
+      },
+      "video_track": 4,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 99.635452,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.2876,
+        "fine_used": true,
+        "audio_rms_dbfs": -17.86,
+        "audio_channels": 1,
+        "frame_snap_error_s": 0.005756,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "5271b16ff19f8ccb",
+      "path": "D:/shoot/takes/T006_clean.mov",
+      "name": "T006_clean",
+      "duration_s": 24.3577,
+      "source_fps": "24000/1001",
+      "has_audio": true,
+      "status": "HIGH",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 32.597111,
+      "song_position_ticks": "8284964688000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.9819,
+        "peak_ratio": 2.0523,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 92.596436,
+          "score": 0.4784,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": -10.259872,
+          "score": 0.3998,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 135.45311,
+          "score": 0.3795,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": -11.334379,
+          "score": 0.3233,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.0,
+        "windows": 5,
+        "residual_ms": 0.0,
+        "reliable": true
+      },
+      "video_track": 2,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 32.597111,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.8062,
+        "fine_used": true,
+        "audio_rms_dbfs": -17.44,
+        "audio_channels": 1,
+        "frame_snap_error_s": 0.018806,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "3a3385edb9a236a8",
+      "path": "D:/shoot/takes/T007_lossy.mp4",
+      "name": "T007_lossy",
+      "duration_s": 12.5125,
+      "source_fps": "30000/1001",
+      "has_audio": true,
+      "status": "LOW",
+      "reason": "AMBIGUOUS",
+      "reason_detail": "3 other position(s) score within 1.15x; pick one from alternates",
+      "song_position_s": 61.773449,
+      "song_position_ticks": "15690578904000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.5233,
+        "peak_ratio": 1.0,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 164.629456,
+          "score": 0.5233,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 181.772125,
+          "score": 0.5232,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 121.772789,
+          "score": 0.5231,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.004,
+        "windows": 4,
+        "residual_ms": 0.0,
+        "reliable": true
+      },
+      "video_track": 2,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 61.773449,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.1095,
+        "fine_used": true,
+        "audio_rms_dbfs": -22.1,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.003407,
+        "windows_evaluated": 4
+      }
+    },
+    {
+      "clip_id": "bb9d31430310ce9c",
+      "path": "D:/shoot/takes/T008_slowmo.mov",
+      "name": "T008_slowmo",
+      "duration_s": 15.649,
+      "source_fps": "60000/1001",
+      "has_audio": true,
+      "status": "HIGH",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 128.41275,
+      "song_position_ticks": "32620724136000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 2.0,
+      "confidence": {
+        "score": 0.735,
+        "peak_ratio": 2.3184,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 188.412094,
+          "score": 0.317,
+          "rate": 2.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.2,
+        "max_error_ms": 0.015,
+        "windows": 5,
+        "residual_ms": 0.007,
+        "reliable": true
+      },
+      "video_track": 2,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 128.41275,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.4353,
+        "fine_used": true,
+        "audio_rms_dbfs": -30.11,
+        "audio_channels": 1,
+        "frame_snap_error_s": 0.007208,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "db373ed07eb78b5e",
+      "path": "D:/shoot/takes/T009_lossy.mp4",
+      "name": "T009_lossy",
+      "duration_s": 11.3864,
+      "source_fps": "24000/1001",
+      "has_audio": true,
+      "status": "HIGH",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 93.025063,
+      "song_position_ticks": "23625922320000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.635,
+        "peak_ratio": 1.7386,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 63.025394,
+          "score": 0.3652,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 165.881393,
+          "score": 0.3652,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 183.024063,
+          "score": 0.3651,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 123.024742,
+          "score": 0.365,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 1.0,
+        "max_error_ms": 0.008,
+        "windows": 3,
+        "residual_ms": 0.002,
+        "reliable": true
+      },
+      "video_track": 3,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 93.025063,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.2219,
+        "fine_used": true,
+        "audio_rms_dbfs": -14.58,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.015479,
+        "windows_evaluated": 3
+      }
+    },
+    {
+      "clip_id": "be9a5e73d6c81bf1",
+      "path": "D:/shoot/takes/T010_avoffset.mov",
+      "name": "T010_avoffset",
+      "duration_s": 26.2,
+      "source_fps": "25/1",
+      "has_audio": true,
+      "status": "MEDIUM",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 165.810248,
+      "song_position_ticks": "42113471400000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.5919,
+        "peak_ratio": 1.3354,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 182.952902,
+          "score": 0.4433,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 122.953574,
+          "score": 0.4272,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 62.954245,
+          "score": 0.4159,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 45.811575,
+          "score": 0.3438,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.0,
+        "windows": 5,
+        "residual_ms": 0.0,
+        "reliable": true
+      },
+      "video_track": 2,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 165.810248,
+        "av_offset_s": 0.1,
+        "fine_peak": 0.2128,
+        "fine_used": true,
+        "audio_rms_dbfs": -33.24,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.019623,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "187039ed20a578f6",
+      "path": "D:/shoot/takes/T011_unrelated.mov",
+      "name": "T011_unrelated",
+      "duration_s": 26.6266,
+      "source_fps": "30000/1001",
+      "has_audio": true,
+      "status": "UNSYNCED",
+      "reason": "NO_MATCH",
+      "reason_detail": "best score 0.104 is below the noise floor 0.3",
+      "song_position_s": null,
+      "song_position_ticks": null,
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": null,
+      "confidence": {
+        "score": 0.1044,
+        "peak_ratio": 1.0417,
+        "window_agreement": 0.0
+      },
+      "alternates": [],
+      "drift": null,
+      "video_track": null,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": null,
+        "av_offset_s": 0.0,
+        "fine_peak": null,
+        "fine_used": false,
+        "audio_rms_dbfs": -26.48,
+        "audio_channels": 1,
+        "frame_snap_error_s": null,
+        "windows_evaluated": 0
+      }
+    },
+    {
+      "clip_id": "38b9e81ccc8660e6",
+      "path": "D:/shoot/takes/T012_room.mov",
+      "name": "T012_room",
+      "duration_s": 12.28,
+      "source_fps": "25/1",
+      "has_audio": true,
+      "status": "HIGH",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 145.320892,
+      "song_position_ticks": "36911530656000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.4601,
+        "peak_ratio": 2.8903,
+        "window_agreement": 1.0
+      },
+      "alternates": [],
+      "drift": {
+        "ppm": 1.5,
+        "max_error_ms": 0.015,
+        "windows": 4,
+        "residual_ms": 0.004,
+        "reliable": true
+      },
+      "video_track": 3,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 145.320892,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.0751,
+        "fine_used": true,
+        "audio_rms_dbfs": -27.12,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.009059,
+        "windows_evaluated": 4
+      }
+    },
+    {
+      "clip_id": "7cfe86bb8d5425d4",
+      "path": "D:/shoot/takes/T013_room.mov",
+      "name": "T013_room",
+      "duration_s": 23.1565,
+      "source_fps": "30000/1001",
+      "has_audio": true,
+      "status": "MEDIUM",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 182.994232,
+      "song_position_ticks": "46478440008000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.4373,
+        "peak_ratio": 1.4073,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 62.995567,
+          "score": 0.3107,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 122.994896,
+          "score": 0.3092,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 165.851562,
+          "score": 0.304,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.0,
+        "windows": 5,
+        "residual_ms": 0.0,
+        "reliable": true
+      },
+      "video_track": 5,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 182.994232,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.1295,
+        "fine_used": true,
+        "audio_rms_dbfs": -11.75,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.019774,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "749844aaab716d9d",
+      "path": "D:/shoot/takes/T014_long.mov",
+      "name": "T014_long",
+      "duration_s": 193.125,
+      "source_fps": "24/1",
+      "has_audio": true,
+      "status": "HIGH",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 15.306258,
+      "song_position_ticks": "3888212328000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.6989,
+        "peak_ratio": 2.1528,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 75.305603,
+          "score": 0.3246,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": -44.693066,
+          "score": 0.322,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.008,
+        "windows": 5,
+        "residual_ms": 0.002,
+        "reliable": true
+      },
+      "video_track": 1,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 15.306258,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.3853,
+        "fine_used": true,
+        "audio_rms_dbfs": -25.26,
+        "audio_channels": 1,
+        "frame_snap_error_s": 0.0007,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "3b2cd11f5deadd6b",
+      "path": "D:/shoot/takes/T015_preroll.mov",
+      "name": "T015_preroll",
+      "duration_s": 23.732,
+      "source_fps": "24000/1001",
+      "has_audio": true,
+      "status": "MEDIUM",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 121.328125,
+      "song_position_ticks": "30819644856000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.6433,
+        "peak_ratio": 1.2819,
+        "window_agreement": 0.8
+      },
+      "alternates": [
+        {
+          "song_position_s": 61.328789,
+          "score": 0.5018,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 164.184799,
+          "score": 0.4718,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 181.327454,
+          "score": 0.4693,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": -13.667675,
+          "score": 0.3134,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.0,
+        "windows": 4,
+        "residual_ms": 0.0,
+        "reliable": true
+      },
+      "video_track": 3,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 121.328125,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.3105,
+        "fine_used": true,
+        "audio_rms_dbfs": -21.56,
+        "audio_channels": 1,
+        "frame_snap_error_s": 0.001417,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "ab5cc1139c14109c",
+      "path": "D:/shoot/takes/T016_room.mov",
+      "name": "T016_room",
+      "duration_s": 23.4818,
+      "source_fps": "24000/1001",
+      "has_audio": true,
+      "status": "MEDIUM",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 148.19957,
+      "song_position_ticks": "37642556952000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.6311,
+        "peak_ratio": 1.315,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 105.342896,
+          "score": 0.4799,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 45.343567,
+          "score": 0.4787,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.0,
+        "windows": 5,
+        "residual_ms": 0.0,
+        "reliable": true
+      },
+      "video_track": 5,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 148.19957,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.1842,
+        "fine_used": true,
+        "audio_rms_dbfs": -31.74,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.009861,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "09ea4874e29f439a",
+      "path": "D:/shoot/takes/T017_unrelated.mov",
+      "name": "T017_unrelated",
+      "duration_s": 23.1064,
+      "source_fps": "24000/1001",
+      "has_audio": true,
+      "status": "UNSYNCED",
+      "reason": "NO_MATCH",
+      "reason_detail": "best score 0.109 is below the noise floor 0.3",
+      "song_position_s": null,
+      "song_position_ticks": null,
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": null,
+      "confidence": {
+        "score": 0.1087,
+        "peak_ratio": 1.0155,
+        "window_agreement": 0.0
+      },
+      "alternates": [],
+      "drift": null,
+      "video_track": null,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": null,
+        "av_offset_s": 0.0,
+        "fine_peak": null,
+        "fine_used": false,
+        "audio_rms_dbfs": -17.66,
+        "audio_channels": 1,
+        "frame_snap_error_s": null,
+        "windows_evaluated": 0
+      }
+    },
+    {
+      "clip_id": "ffbbb4e98543325b",
+      "path": "D:/shoot/takes/T018_drift.mov",
+      "name": "T018_drift",
+      "duration_s": 36.4114,
+      "source_fps": "24000/1001",
+      "has_audio": true,
+      "status": "HIGH",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 87.745766,
+      "song_position_ticks": "22291004736000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.672,
+        "peak_ratio": 1.8859,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 130.6,
+          "score": 0.3563,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 27.751118,
+          "score": 0.3541,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": -94.6,
+        "max_error_ms": 4.99,
+        "windows": 5,
+        "residual_ms": 0.284,
+        "reliable": true
+      },
+      "video_track": 2,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 87.745766,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.0354,
+        "fine_used": true,
+        "audio_rms_dbfs": -18.69,
+        "audio_channels": 1,
+        "frame_snap_error_s": 0.008568,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "9b2f2a2319da2006",
+      "path": "D:/shoot/takes/T019_preroll.mov",
+      "name": "T019_preroll",
+      "duration_s": 10.1768,
+      "source_fps": "24000/1001",
+      "has_audio": true,
+      "status": "HIGH",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 0.039263,
+      "song_position_ticks": "10594584000",
+      "source_in_s": 3.378375,
+      "source_in_ticks": "858161304000",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.7061,
+        "peak_ratio": 2.784,
+        "window_agreement": 1.0
+      },
+      "alternates": [],
+      "drift": {
+        "ppm": -0.1,
+        "max_error_ms": 0.001,
+        "windows": 2,
+        "residual_ms": 0.0,
+        "reliable": true
+      },
+      "video_track": 1,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": -3.339112,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.314,
+        "fine_used": true,
+        "audio_rms_dbfs": -20.14,
+        "audio_channels": 1,
+        "frame_snap_error_s": 0.002446,
+        "windows_evaluated": 2
+      }
+    },
+    {
+      "clip_id": "ce1e4b98b5ed5880",
+      "path": "D:/shoot/takes/T020_silent.mov",
+      "name": "T020_silent",
+      "duration_s": 10.0,
+      "source_fps": "24/1",
+      "has_audio": true,
+      "status": "UNSYNCED",
+      "reason": "NO_AUDIO",
+      "reason_detail": "audio stream is silent (-200.0 dBFS)",
+      "song_position_s": null,
+      "song_position_ticks": null,
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": null,
+      "confidence": {
+        "score": 0.0,
+        "peak_ratio": 0.0,
+        "window_agreement": null
+      },
+      "alternates": [],
+      "drift": null,
+      "video_track": null,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": null,
+        "av_offset_s": 0.0,
+        "fine_peak": null,
+        "fine_used": false,
+        "audio_rms_dbfs": -200.0,
+        "audio_channels": 1,
+        "frame_snap_error_s": null,
+        "windows_evaluated": 0
+      }
+    },
+    {
+      "clip_id": "8329f2f5f267e85f",
+      "path": "D:/shoot/takes/T021_noaudio.mov",
+      "name": "T021_noaudio",
+      "duration_s": 28.8622,
+      "source_fps": "24000/1001",
+      "has_audio": false,
+      "status": "UNSYNCED",
+      "reason": "NO_AUDIO",
+      "reason_detail": "no audio stream",
+      "song_position_s": null,
+      "song_position_ticks": null,
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": null,
+      "confidence": {
+        "score": 0.0,
+        "peak_ratio": 0.0,
+        "window_agreement": null
+      },
+      "alternates": [],
+      "drift": null,
+      "video_track": null,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": null,
+        "av_offset_s": 0.0,
+        "fine_peak": null,
+        "fine_used": false,
+        "audio_rms_dbfs": null,
+        "audio_channels": 0,
+        "frame_snap_error_s": null,
+        "windows_evaluated": 0
+      }
+    },
+    {
+      "clip_id": "cdc318947ed6e6a2",
+      "path": "D:/shoot/takes/T022_chorus.mov",
+      "name": "T022_chorus",
+      "duration_s": 13.2215,
+      "source_fps": "24000/1001",
+      "has_audio": true,
+      "status": "LOW",
+      "reason": "AMBIGUOUS",
+      "reason_detail": "4 other position(s) score within 1.15x; pick one from alternates",
+      "song_position_s": 62.210121,
+      "song_position_ticks": "15807119328000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.5752,
+        "peak_ratio": 1.0002,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 122.209442,
+          "score": 0.5754,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 165.066132,
+          "score": 0.5752,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 182.208786,
+          "score": 0.5751,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 92.2,
+          "score": 0.3334,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.1,
+        "max_error_ms": 0.004,
+        "windows": 4,
+        "residual_ms": 0.002,
+        "reliable": true
+      },
+      "video_track": 5,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 62.210121,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.123,
+        "fine_used": true,
+        "audio_rms_dbfs": -21.36,
+        "audio_channels": 1,
+        "frame_snap_error_s": 0.018712,
+        "windows_evaluated": 4
+      }
+    },
+    {
+      "clip_id": "726663b0e3eae1bd",
+      "path": "D:/shoot/takes/T023_avoffset.mov",
+      "name": "T023_avoffset",
+      "duration_s": 27.319,
+      "source_fps": "24000/1001",
+      "has_audio": true,
+      "status": "LOW",
+      "reason": "AMBIGUOUS",
+      "reason_detail": "3 other position(s) score within 1.15x; pick one from alternates",
+      "song_position_s": 106.24601,
+      "song_position_ticks": "26984405448000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.6168,
+        "peak_ratio": 1.111,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 46.246681,
+          "score": 0.5552,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 149.102692,
+          "score": 0.4936,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 166.245346,
+          "score": 0.3602,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.0,
+        "windows": 5,
+        "residual_ms": 0.0,
+        "reliable": true
+      },
+      "video_track": 5,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 106.24601,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.3634,
+        "fine_used": true,
+        "audio_rms_dbfs": -30.84,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.014885,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "c907cf30c4594ff3",
+      "path": "D:/shoot/takes/T024_noaudio.mov",
+      "name": "T024_noaudio",
+      "duration_s": 18.727,
+      "source_fps": "24000/1001",
+      "has_audio": false,
+      "status": "UNSYNCED",
+      "reason": "NO_AUDIO",
+      "reason_detail": "no audio stream",
+      "song_position_s": null,
+      "song_position_ticks": null,
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": null,
+      "confidence": {
+        "score": 0.0,
+        "peak_ratio": 0.0,
+        "window_agreement": null
+      },
+      "alternates": [],
+      "drift": null,
+      "video_track": null,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": null,
+        "av_offset_s": 0.0,
+        "fine_peak": null,
+        "fine_used": false,
+        "audio_rms_dbfs": null,
+        "audio_channels": 0,
+        "frame_snap_error_s": null,
+        "windows_evaluated": 0
+      }
+    },
+    {
+      "clip_id": "2176332faa6957f6",
+      "path": "D:/shoot/takes/T025_lossy.mp4",
+      "name": "T025_lossy",
+      "duration_s": 25.75,
+      "source_fps": "24/1",
+      "has_audio": true,
+      "status": "MEDIUM",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 42.720222,
+      "song_position_ticks": "10848854016000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.7478,
+        "peak_ratio": 1.1687,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 102.719559,
+          "score": 0.6399,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 145.576218,
+          "score": 0.5392,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 162.718872,
+          "score": 0.3453,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": -0.1,
+        "max_error_ms": 0.004,
+        "windows": 5,
+        "residual_ms": 0.002,
+        "reliable": true
+      },
+      "video_track": 4,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 42.720222,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.3024,
+        "fine_used": true,
+        "audio_rms_dbfs": -17.15,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.010889,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "b5e7fff1ec342707",
+      "path": "D:/shoot/takes/T026_room.mov",
+      "name": "T026_room",
+      "duration_s": 24.24,
+      "source_fps": "25/1",
+      "has_audio": true,
+      "status": "HIGH",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 141.938354,
+      "song_position_ticks": "36053369352000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.659,
+        "peak_ratio": 1.6119,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 39.082352,
+          "score": 0.4088,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 99.081688,
+          "score": 0.3834,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.015,
+        "windows": 5,
+        "residual_ms": 0.007,
+        "reliable": true
+      },
+      "video_track": 4,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 141.938354,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.2174,
+        "fine_used": true,
+        "audio_rms_dbfs": -24.51,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.004896,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "1566dca25d337cbb",
+      "path": "D:/shoot/takes/T027_slowmo.mov",
+      "name": "T027_slowmo",
+      "duration_s": 12.0954,
+      "source_fps": "60000/1001",
+      "has_audio": true,
+      "status": "MEDIUM",
+      "reason": null,
+      "reason_detail": null,
+      "song_position_s": 180.365356,
+      "song_position_ticks": "45810981216000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 2.0,
+      "confidence": {
+        "score": 0.5788,
+        "peak_ratio": 1.3111,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 60.366684,
+          "score": 0.4415,
+          "rate": 2.0
+        },
+        {
+          "song_position_s": 163.222687,
+          "score": 0.426,
+          "rate": 2.0
+        },
+        {
+          "song_position_s": 120.366013,
+          "score": 0.4101,
+          "rate": 2.0
+        }
+      ],
+      "drift": {
+        "ppm": 0.0,
+        "max_error_ms": 0.015,
+        "windows": 5,
+        "residual_ms": 0.007,
+        "reliable": true
+      },
+      "video_track": 4,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 180.365356,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.1896,
+        "fine_used": true,
+        "audio_rms_dbfs": -27.28,
+        "audio_channels": 1,
+        "frame_snap_error_s": -0.018523,
+        "windows_evaluated": 5
+      }
+    },
+    {
+      "clip_id": "cc932bfd026b0c1b",
+      "path": "D:/shoot/takes/T028_chorus.mov",
+      "name": "T028_chorus",
+      "duration_s": 11.0777,
+      "source_fps": "30000/1001",
+      "has_audio": true,
+      "status": "LOW",
+      "reason": "AMBIGUOUS",
+      "reason_detail": "4 other position(s) score within 1.15x; pick one from alternates",
+      "song_position_s": 63.39312,
+      "song_position_ticks": "16103767680000",
+      "source_in_s": 0.0,
+      "source_in_ticks": "0",
+      "rate": 1.0,
+      "confidence": {
+        "score": 0.6822,
+        "peak_ratio": 1.0003,
+        "window_agreement": 1.0
+      },
+      "alternates": [
+        {
+          "song_position_s": 123.392448,
+          "score": 0.6823,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 166.24913,
+          "score": 0.6822,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 183.3918,
+          "score": 0.682,
+          "rate": 1.0
+        },
+        {
+          "song_position_s": 93.392815,
+          "score": 0.4228,
+          "rate": 1.0
+        }
+      ],
+      "drift": {
+        "ppm": -0.5,
+        "max_error_ms": 0.004,
+        "windows": 3,
+        "residual_ms": 0.001,
+        "reliable": true
+      },
+      "video_track": 6,
+      "override": null,
+      "diagnostics": {
+        "raw_song_position_s": 63.39312,
+        "av_offset_s": 0.0,
+        "fine_peak": 0.1913,
+        "fine_used": true,
+        "audio_rms_dbfs": -32.05,
+        "audio_channels": 1,
+        "frame_snap_error_s": 0.003547,
+        "windows_evaluated": 3
+      }
+    }
+  ],
+  "summary": {
+    "total": 28,
+    "HIGH": 9,
+    "MEDIUM": 8,
+    "LOW": 4,
+    "UNSYNCED": 7,
+    "video_tracks": 5
+  }
+}

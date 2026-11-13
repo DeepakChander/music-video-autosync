@@ -543,3 +543,179 @@ What the spec says:
 | 10 | manifest v5, "premierepro", localFileSystem values, fs, picker, nativePath, CommonJS, canvas/svg | VERIFIED. **localhost/port domain syntax: NOT FOUND** (SECONDARY says rejected; use `"all"`). ES modules and env vars: NOT FOUND |
 | 11 | Dev Mode, UDT Add/Load, Package, .ccx = zip, double-click, UPIA path and commands | VERIFIED. Zip-root layout: SECONDARY |
 | 12 | xmeml element rules, rate table, pathurl rules, link, enabled | VERIFIED (Apple). Premiere's mapping of track `<enabled>`, Windows pathurl form and mixed-rate units: SECONDARY / NOT FOUND |
+
+---
+
+## 13. Follow-up
+
+Same sources and commits as above, plus `adobe/eslint-plugin-premierepro` README @ `d45d0c2` (2026-11-12) and `Adobe-CEP/Samples` (Adobe's CEP sample, ExtendScript). The URLs marked "live" were fetched today and match the repo source.
+
+### 13.1 Project panel selection — VERIFIED (doc) + VERIFIED (Adobe sample)
+URLs: https://developer.adobe.com/premiere-pro/uxp/ppro-reference/classes/projectutils/ (live) · .../classes/projectitemselection/
+
+| Member | Returns | Since | Doc text |
+|---|---|---|---|
+| `ProjectUtils.getSelection(project: Project)` (static) | `Promise<ProjectItemSelection>` | 25.6 | "Get array of selected project items in project view" |
+| `projectItemSelection.getItems()` | `Promise<ProjectItem[]>` | 25.6 | "Get the project items that is represented by this selection." |
+| `ProjectUtils.getProjectViewIds()` | `Promise<Guid[]>` | 25.6 | "Get array of project view ids" |
+| `ProjectUtils.getSelectionFromViewId(guid: Guid)` | `Promise<ProjectItemSelection>` | 25.6 | for a specific Project panel |
+
+- Both calls are async.
+- The items come back as `ProjectItem`. Cast them with `ClipProjectItem.cast` or `FolderItem.cast`; a cast returns falsy when the type does not match (item 3).
+- The user may select bins, so recurse into them as the sample's `getClipProjectItem` does.
+- Change event: `ppro.Constants.ProjectEvent.PROJECT_ITEM_SELECTION_CHANGED` (constants page, 25.6). The sample `eventManager.ts` registers it with `ppro.EventManager.addGlobalEventListener(ppro.Constants.ProjectEvent.PROJECT_ITEM_SELECTION_CHANGED, handler, true)`. The event payload is not documented, so re-query with `getSelection` inside the handler.
+
+```js
+const sel = await ppro.ProjectUtils.getSelection(project);        // sample: projectPanel.ts#getSelectedProjectItems
+const picked = await sel.getItems();
+const clips = picked.map((p) => ppro.ClipProjectItem.cast(p)).filter(Boolean);
+```
+
+### 13.2 TrackItemSelection and createRemoveItemsAction
+URLs: https://developer.adobe.com/premiere-pro/uxp/ppro-reference/classes/trackitemselection/ · .../classes/sequence/ · .../classes/sequenceeditor/
+
+**Building a selection — VERIFIED (doc).** There are two documented routes.
+
+**(a) From the sequence** (the pattern the Adobe sample uses, in `sequence.ts#setSequenceSelection` and `sequenceEditor.ts`):
+- `sequence.getSelection(): Promise<TrackItemSelection>`: "Returns the current selection group of the sequence."
+- `sel.addItem(trackItem: VideoClipTrackItem | AudioClipTrackItem, skipDuplicateCheck: boolean): boolean` (sync). TYPES: `skipDuplicateCheck?` is optional.
+- `sel.removeItem(trackItem): boolean` (sync). `sel.getTrackItems(): Promise<Array<VideoClipTrackItem | AudioClipTrackItem>>`.
+- `sequence.setSelection(sel)` pushes it to the UI. It returns `boolean` **sync from 26.3**, `Promise<boolean>` before that. `sequence.clearSelection(): Promise<boolean>`.
+- NOT FOUND: whether mutating the object from `getSelection()` changes the on-screen selection without `setSelection`.
+- SECONDARY (CaYatur/PremiereProMCP `plugin/src/handlers/clip.js` @ `21a489f`): its `buildSingleItemSelection` calls `getSelection()`, `removeItem()` on every existing item, then `addItem(target)`. It passes that object to `createRemoveItemsAction` without calling `setSelection`.
+
+**(b) Empty selection:** `TrackItemSelection.createEmptySelection(callback: (selection: TrackItemSelection) => void): boolean` (25.6).
+- The doc says: *"The selection object is valid for the lifetime and scope of the callback; it's not recommended to extract or use the selection object from outside the callback, nor use asynchronous code within the callback"*.
+- It **returns a boolean, not the selection**.
+- ESLint rules `no-async-in-empty-selection` and `no-empty-selection-escape` enforce this. The rule doc warns: "selection here is the boolean return value of createEmptySelection(), not the selection!"
+- No Adobe sample calls it. The nested pattern below follows these rules, but I could not confirm it works at runtime.
+
+**`editor.createRemoveItemsAction(trackItemSelection: TrackItemSelection, ripple: boolean, mediaType: Constants.MediaType, shiftOverLapping: boolean): Action`** (25.6). TYPES: `shiftOverLapping?` is optional. The doc description is only "Create remove action for sequence", and every parameter description is "-".
+- **Does it remove only the selected items? NOT FOUND in the docs.**
+  - The Adobe sample `removeSelectedTrackItems` passes the user's current selection ("Remove selected trackItems ... by ripple delete").
+  - SECONDARY (CaYatur code): it explicitly adds the linked A/V partners to the selection ("The linked audio/video half has to go too"). That suggests linked partners are **not** removed automatically. It is a design comment, not a stated live test.
+- `ripple`: the sample calls it "ripple delete". SECONDARY (dev-notes): `false` = Lift (the gap stays), `true` = Extract.
+- **`mediaType`: unresolved.**
+  - The only official hint is the Adobe sample comment: `ppro.Constants.MediaType.VIDEO // align moved track items to the start of the nearest video frame`. That reads as **alignment of rippled material, not a filter**.
+  - SECONDARY (dev-notes) reads it differently: "`MediaType.ANY` removes video, audio, and caption items in one call". CaYatur passes `ANY` whenever the selection mixes audio and video.
+  - Test with `ripple=false` first, where alignment cannot matter.
+- `shiftOverLapping`: NOT FOUND. SECONDARY (dev-notes): "not verified ... Start with `false`".
+
+```js
+// All awaits happen before the lock: collect the exact items to remove first.
+const a1 = await seq.getAudioTrack(0);
+const victims = a1.getTrackItems(ppro.Constants.TrackItemType.CLIP, false);   // sync; filter beforehand
+const editor = ppro.SequenceEditor.getEditor(seq);
+let ok = false;
+project.lockedAccess(() => {
+  ppro.TrackItemSelection.createEmptySelection((sel) => {                    // UNVERIFIED nesting
+    victims.forEach((it) => sel.addItem(it, true));
+    const act = editor.createRemoveItemsAction(sel, false /* lift */, ppro.Constants.MediaType.AUDIO, false);
+    ok = project.executeTransaction((ca) => { ca.addAction(act); }, "Lift audio halves");
+  });
+});
+// Route (a) instead: const sel = await seq.getSelection(); remove/add items; then create the action inside lockedAccess.
+```
+
+### 13.3 Constants and telling video from audio
+URL: https://developer.adobe.com/premiere-pro/uxp/ppro-reference/constants/ and TYPES `export namespace Constants`.
+
+**`Constants.TrackItemType`** (25.6):
+- Constants page names: `EMPTY, CLIP, TRANSITION, PREVIEW, FEEDBACK`.
+- TYPES: `export enum TrackItemType { EMPTY, CLIP, TRANSITION, PREVIEW, FEEDBACK }`, with no explicit values.
+- The VideoTrack page states the numbers: "Empty (0), Clip (1), Transition (2), Preview (3) or Feedback (4)".
+- The sample uses `ppro.Constants.TrackItemType.CLIP` (`sequence.ts`, `transition.ts`).
+- SECONDARY (Syncitol, 26.3): at runtime `CLIP` is `1`.
+
+**`Constants.MediaType`** (25.6):
+- Constants page names: `ANY, DATA, VIDEO, AUDIO`.
+- TYPES: `export enum MediaType { ANY, DATA, VIDEO, AUDIO }`, with no explicit values.
+- **Runtime values: NOT FOUND.** Use the symbols and never hard-code numbers.
+- The sample uses `ppro.Constants.MediaType.VIDEO` and `.AUDIO`, including as object keys in `projectPanel.ts` (`MEDIA_TYPE_TO_STRING_MAP`). That shows they are primitives but not what they are.
+
+**Video vs audio item:**
+- **Recommended: classify by the track you read it from.** This is VERIFIED (doc): `VideoTrack.getTrackItems` "Returns array of VideoClipTrackItem" and `AudioTrack.getTrackItems` "Returns array of AudioClipTrackItem". No Guid comparison is needed.
+- `trackItem.getMediaType(): Promise<Guid>` is "UUID representing the underlying media type of this track item". Tracks have the same method.
+- `Guid` has `toString(): string`, plus static `ppro.Guid.fromString(stringValue)` (TYPES).
+- **What to compare the Guid against: NOT FOUND** in the UXP docs, samples or TYPES. `Constants.MediaType` is not documented as a Guid.
+- SECONDARY (Adobe's CEP sample, ExtendScript, `Adobe-CEP/Samples/PProPanel/jsx/PPRO/Premiere.jsx`):
+  - `MediaType_VIDEO = "228CDA18-3625-4d2d-951E-348879E4ED93"`
+  - `MediaType_AUDIO = "80B8E3D5-6DCA-4195-AEFB-CB5F407AB009"`
+  - `MediaType_ANY = "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"`
+  - The sample's comment calls them "Magical constants from Premiere Pro's internal automation". Whether UXP `getMediaType().toString()` returns these strings is UNVERIFIED. Probe once and compare case-insensitively.
+
+### 13.4 ProjectItem naming and identity — VERIFIED (doc) unless marked
+URLs: .../classes/projectitem/ · .../classes/clipprojectitem/ · .../classes/folderitem/ · .../classes/videocliptrackitem/
+
+**Names:**
+- `name: string` is a **read-only property** (25.6) on `ProjectItem`, `ClipProjectItem` and `FolderItem`: "The name of this project item."
+- Project items have **no `getName()`** (absent from all three pages and from TYPES). Rename with `createSetNameAction(inName: string): Action`.
+- `getName(): Promise<string>` exists on **track items** only: "Returns the display name for trackItem". It can differ from the project item's name.
+
+**Identity:**
+- `ProjectItem.getId(): string` is **sync**, 25.6: "Get id of projectItem". It is documented **only on ProjectItem**; the ClipProjectItem and FolderItem pages and TYPES do not list it.
+- So keep the original `ProjectItem`, or call `ppro.ProjectItem.cast(clip).getId()`. `ProjectItem.cast` takes "FolderItem or ClipProjectItem".
+- `trackItem.getProjectItem(): Promise<ProjectItem>`.
+- `===` between wrappers: NOT documented. SECONDARY (dev-notes): "Compare with `getId()`. Object identity (`===`) is correct only in some cases." CaYatur also compares `getId()`.
+- Sequences: compare `sequence.guid.toString()`.
+
+```js
+const placedId = ppro.ProjectItem.cast(clip).getId();             // record at placement time
+const ti = (await seq.getVideoTrack(0)).getTrackItems(ppro.Constants.TrackItemType.CLIP, false)[0];
+const isMine = (await ti.getProjectItem()).getId() === placedId;
+```
+
+### 13.5 Timers, os/fs, opening a folder
+- **`setTimeout` / Promise sleep: available.** There is no dedicated reference page; I searched `uxp-api/reference-js/global-members` in both doc repos. VERIFIED by official usage:
+  - Premiere's JS-modules recipe has `return new Promise(resolve => setTimeout(resolve, 1000));` (https://developer.adobe.com/premiere-pro/uxp/resources/recipes/js-modules/).
+  - The network recipe has `setTimeout(() => controller.abort(), timeoutMs)`.
+  - The Adobe sample `projectPanel.ts` calls `setTimeout(async () => {...}, 1000)`.
+  - Yield **between** transactions only. The ESLint rules forbid async work inside `lockedAccess` / `executeTransaction`.
+- **`require("os").homedir()`:** VERIFIED (live) at https://developer.adobe.com/premiere-pro/uxp/uxp-api/reference-js/modules/os/os. "Gets the home directory path of the user", `Returns: string`.
+- **`require("fs").readFile(path, options, callback)` → `Promise<string|ArrayBuffer>`:** VERIFIED (live) at https://developer.adobe.com/premiere-pro/uxp/uxp-api/reference-js/modules/fs/fs. Absolute paths need `"fullAccess"` (filesystem recipe, item 10).
+- **Opening a folder:** `require("uxp").shell.openPath(path: string, developerText: string): Promise<string>`. VERIFIED (live) at https://developer.adobe.com/premiere-pro/uxp/uxp-api/reference-js/modules/uxp/shell/shell.
+  - "Opens the given file or folder path in the system default application." It resolves with `""` on success, otherwise an error message.
+  - It needs `requiredPermissions.launchProcess`. The manifest page lists `LaunchProcessPermission` with `schemes: string[]` and `extensions: string[]`, both in the "Required Properties" column, with the example `"extensions": ["pdf"]`.
+  - The external-process recipe (https://developer.adobe.com/premiere-pro/uxp/resources/recipes/external-process/) says: "Use an **empty string** `""` to allow **opening folders** in Finder/Explorer". Its example is `"extensions": [".pdf", ".txt", ".mp4", ""]`. That example uses dotted extensions and omits `schemes`, unlike the manifest page; which form is accepted is UNVERIFIED.
+  - The recipe also says "the user must provide explicit consent through a system dialog". The choice "can be remembered".
+  - `openExternal` does not allow the file scheme: "file scheme is not allowed for openExternal. Use openPath".
+
+```js
+await new Promise((r) => setTimeout(r, 0));                       // yield between batches (outside locks)
+const res = await require("uxp").shell.openPath("C:\\Users\\me\\Exports", "Open the export folder");
+if (res !== "") console.error(res);
+// manifest: "launchProcess": { "schemes": ["https"], "extensions": [""] }   // shape UNVERIFIED, see above
+```
+
+### 13.6 A sequence's ProjectItem, and moving it into a bin — VERIFIED (doc)
+URL: https://developer.adobe.com/premiere-pro/uxp/ppro-reference/classes/sequence/
+
+- `sequence.getProjectItem(): Promise<ProjectItem>`, Since **25.6**: "Get the associated projectItem of the sequence."
+- Reverse direction (ClipProjectItem page): `clip.isSequence(): Promise<boolean>`, `clip.getSequence(): Promise<Sequence>`.
+- Moving it: `folder.createMoveItemAction(item: ProjectItem, newParent: FolderItem): Action` (item 3).
+  - The Adobe sample calls it on the item's current parent (root). Use `seqPI.getParentBin()` (sync `FolderItem`) as the receiver.
+  - Whether any other folder works as the receiver: NOT FOUND.
+- NOT FOUND: which bin `createSequence` puts the new sequence in (root vs insertion bin). Read `getParentBin()`.
+- NOT FOUND: whether `createSequenceFromMedia(name, clips, targetBin)` puts the sequence itself in `targetBin`. The doc only says "Create a new sequence with a given name and media".
+- SECONDARY (Syncitol, 26.3): it renames a sequence with `(await sequence.getProjectItem()).createSetNameAction(newName)` inside a transaction.
+
+```js
+const seq = await project.createSequence("Auto Placement");
+const seqPI = await seq.getProjectItem();
+const from = seqPI.getParentBin();                                  // sync FolderItem
+project.lockedAccess(() => {
+  const mv = from.createMoveItemAction(seqPI, targetBin);           // targetBin: FolderItem (item 3)
+  project.executeTransaction((ca) => { ca.addAction(mv); }, "Move sequence into bin");
+});
+const parentNow = (await seq.getProjectItem()).getParentBin();        // re-fetch, then compare ids (UNVERIFIED that the wrapper refreshes)
+const movedOk = ppro.ProjectItem.cast(parentNow).getId() === ppro.ProjectItem.cast(targetBin).getId();
+```
+
+| 13.x | Status |
+|---|---|
+| 13.1 selection | VERIFIED (doc + sample) |
+| 13.2 build selection | VERIFIED. `createEmptySelection` nesting is UNVERIFIED at runtime. Remove semantics (linked partners, `mediaType`, `shiftOverLapping`): NOT FOUND / conflicting SECONDARY. |
+| 13.3 constants | Names VERIFIED. TrackItemType numbers VERIFIED (doc). MediaType runtime values and the Guid comparison target: NOT FOUND (CEP Guids are SECONDARY). |
+| 13.4 naming / identity | VERIFIED. `===` semantics: NOT FOUND |
+| 13.5 timers, os, fs, openPath | VERIFIED. `launchProcess` exact shape: inconsistent between doc pages. |
+| 13.6 sequence project item | VERIFIED. Default bin and `createSequenceFromMedia` targetBin effect: NOT FOUND |

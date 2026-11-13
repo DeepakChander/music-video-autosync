@@ -29,11 +29,39 @@ def _f(x: str) -> Optional[float]:
     return float(x) if x not in ("", None) else None
 
 
+def _timecode_to_s(tc: str, fps: Fraction) -> float:
+    hh, mm, ss, ff = (int(x) for x in tc.replace(";", ":").split(":"))
+    base = round(float(fps))
+    frames = ((hh * 60 + mm) * 60 + ss) * base + ff
+    return float(Fraction(frames) / fps)
+
+
+def normalise_truth(rows: list[dict], fps: Fraction) -> list[dict]:
+    """Accept the synthetic truth.csv or a minimal real-footage truth file with just
+    name + true_position_s or true_timecode (hh:mm:ss:ff on the sequence), and optionally
+    expected_reason (e.g. NO_AUDIO for B-roll) and rate. See docs/real_truth_template.csv."""
+    out = []
+    for r in rows:
+        r = {k.strip(): (v or "").strip() for k, v in r.items() if k}
+        if not r.get("true_position_s") and r.get("true_timecode"):
+            r["true_position_s"] = f"{_timecode_to_s(r['true_timecode'], fps):.6f}"
+        r.setdefault("case", "real")
+        r.setdefault("expected_reason", "")
+        r.setdefault("true_position_s", "")
+        r.setdefault("ambiguous_positions", "")
+        r["unique_fraction"] = r.get("unique_fraction") or "1.0"
+        r["rate"] = r.get("rate") or "1.0"
+        r["drift_ppm"] = r.get("drift_ppm") or "0"
+        out.append(r)
+    return out
+
+
 def evaluate(truth_rows: list[dict], result: SyncResult) -> dict:
     fps = Fraction(result.sequence.fps_num, result.sequence.fps_den)
     frame = float(1 / fps)
     by_name = {c.name: c for c in result.clips}
     rows = []
+    truth_rows = normalise_truth(truth_rows, fps)
     for t in truth_rows:
         c = by_name.get(t["name"])
         row = {"name": t["name"], "case": t["case"], "expected_reason": t["expected_reason"] or None,

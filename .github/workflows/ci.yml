@@ -1,0 +1,46 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: engine + helper tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: FFmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+      - name: FFmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
+      - name: Dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Tests
+        run: python -m pytest -q
+
+  panel:
+    name: panel tests + .ccx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Panel tests
+        run: node --test panel/test/*.test.js
+      - name: Syntax check every shipped file
+        run: for f in panel/index.js panel/js/*.js panel/js/*/*.js; do node --check "$f"; done
+      - name: Build and validate .ccx
+        run: python3 packaging/build_ccx.py

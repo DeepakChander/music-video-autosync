@@ -209,3 +209,46 @@ position pushed placed clips up to 51 tracks on a 200-take set; with it, 21.
   track at the expected frame (`tests/export/test_fcp7_xml.py`).
 - **Not verified:** Premiere's own import of the file. The panel's placement self-test checks it by
   readback on the client's machine.
+
+## D-018 UXP placement design (adapter A)
+
+- **Evidence** (docs/PREMIERE_API_NOTES.md items 1, 5, 6, 7): actions must be created inside
+  `lockedAccess` (enforced from 26.3); overwrite never ripples; only insert is documented to create a
+  track (index = count); insert ripples; moves are deltas and do not carry linked items; insert and
+  overwrite ignore source marks set in the same transaction.
+- **Choice:** master on A1 by overwrite at 0. A clip whose tracks exist is placed by overwrite at
+  its position. The first clip of a new track is inserted at a staging point 10 minutes past
+  everything (nothing there to ripple) and moved to its position: video and scratch audio each by
+  the same delta. Source marks are set in their own transaction first and the user's original
+  marks restored after. Clips are placed one transaction each, yielding to Premiere every 10 clips;
+  the longest block is measured and reported by the self-test (Phase 0 spike b).
+- **Never success without readback:** every track item is read back by project item id and start
+  ticks; mismatches, missing items, unexpected items and unmuted scratch tracks are all reported.
+- **What would change it:** self-test results showing freezes (then larger yields or XML default),
+  or negative move deltas failing (then XML default).
+
+## D-019 Panel network permission `"domains": "all"`
+
+Premiere rejects `http://127.0.0.1:<port>` manifest entries (third-party reports, notes item 10);
+`"all"` is the documented value. The panel only ever calls `http://127.0.0.1:47653`, and the
+helper requires the token and a loopback Host header. Revisit when Adobe documents port syntax.
+
+## D-020 Panel modules are injected, not cross-required
+
+UXP's CommonJS resolution for nested requires is under-documented (notes item 10). Only
+`panel/index.js` requires modules (full relative paths with `.js`); every module receives its
+dependencies as arguments. The same modules load in Node, where `panel/test/` runs them against a
+simulated Premiere (`panel/test/fake-ppro.js`) that enforces the lock rule. `packaging/build_ccx.py`
+fails the build if any other file requires a relative module.
+
+## D-021 Installer: per-user, one file for helper and panel
+
+- Inno Setup, `PrivilegesRequired=lowest`, install to `%LOCALAPPDATA%\Programs\MusicVideoAutoSync`
+  (no admin rights in studios with locked-down machines).
+- Token generated at install (`AutoSyncHelper.exe init-token`); Startup shortcut runs the tray app.
+- The panel `.ccx` is installed with Adobe's `UnifiedPluginInstallerAgent /install` when present,
+  from a copy in `C:\ProgramData\MusicVideoAutoSync` (UPIA rejects paths with spaces). UPIA is silent,
+  so the client guide checks Window > UXP Plugins and falls back to a double-click install.
+- Uninstall stops the helper, removes the panel, and deletes program, token, logs and cache.
+- The release workflow proves install / run / uninstall on a Windows runner (Phase 5 gate); the
+  runner is not a pristine machine, so a client install remains the final check.

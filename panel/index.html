@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="css/panel.css">
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="app-name">Music Video AutoSync</div>
+      <div class="app-sub">AI Rough Cut Generator</div>
+    </div>
+    <div class="helper-status"><span id="helperDot" class="dot grey"></span><span id="helperText">Checking helper…</span></div>
+  </div>
+
+  <div id="banner" class="banner hidden"></div>
+
+  <div id="tokenBox" class="card hidden">
+    <div class="h2">Pair with the helper</div>
+    <div class="muted small">Right-click the AutoSync icon in the Windows tray, choose <b>Copy pairing token</b>, paste it here.</div>
+    <div class="row"><input id="tokenInput" type="text" placeholder="pairing token"><button id="saveToken">Save</button></div>
+  </div>
+
+  <div class="card">
+    <div class="h2">1. Master audio</div>
+    <div class="row"><button id="pickMaster">Select master…</button><span id="masterName" class="muted grow">No master selected</span></div>
+    <div id="waveform" class="waveform"></div>
+    <div class="row"><span id="masterInfo" class="muted grow"></span><button id="analyseMaster" class="primary" disabled>Analyse Music</button></div>
+  </div>
+
+  <div class="card">
+    <div class="h2">2. Footage</div>
+    <div class="row wrap"><button id="pickFiles">Import files…</button><button id="useSelection">Use selected project items</button><button id="clearFootage">Clear</button></div>
+    <div class="row"><span id="footageInfo" class="muted grow">No clips selected</span></div>
+    <div class="row"><button id="analyseClips" class="primary" disabled>Analyse All Clips</button></div>
+  </div>
+
+  <div class="card">
+    <div class="h2">3. Sync settings</div>
+    <div class="checks">
+      <label><input type="checkbox" checked disabled> Audio matching (always on)</label>
+      <label><input type="checkbox" checked disabled> Preserve footage (source files are never changed)</label>
+      <label><input type="checkbox" id="keepScratch" checked> Keep scratch audio</label>
+      <label><input type="checkbox" id="muteScratch" checked> Mute scratch audio</label>
+      <label><input type="checkbox" checked disabled> Separate video tracks for overlapping takes</label>
+      <label><input type="checkbox" disabled> Frame-rate conversion (not in v1, see Limitations)</label>
+      <label><input type="checkbox" id="placeLow"> Also place low-confidence (LOW) clips</label>
+      <label><input type="checkbox" id="rate2" checked> Search 2x playback (slow-motion takes)</label>
+    </div>
+    <div class="row">
+      <span class="label">Sequence</span>
+      <select id="fps">
+        <option value="24000/1001">23.976 fps</option>
+        <option value="24/1">24 fps</option>
+        <option value="25/1">25 fps</option>
+        <option value="30000/1001">29.97 fps</option>
+        <option value="30/1">30 fps</option>
+        <option value="50/1">50 fps</option>
+        <option value="60000/1001">59.94 fps</option>
+        <option value="60/1">60 fps</option>
+      </select>
+      <select id="res">
+        <option value="3840x2160">3840 x 2160</option>
+        <option value="1920x1080">1920 x 1080</option>
+        <option value="4096x2160">4096 x 2160</option>
+        <option value="1080x1920">1080 x 1920 (vertical)</option>
+      </select>
+    </div>
+    <div class="row">
+      <span class="label">Placement</span>
+      <select id="adapter">
+        <option value="auto">Self-test default</option>
+        <option value="uxp">UXP direct (A)</option>
+        <option value="xml">FCP7 XML import (B)</option>
+      </select>
+      <span id="adapterNote" class="muted small grow"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="h2">4. Progress</div>
+    <div class="stats">
+      <div><div class="num" id="stDone">0/0</div><div class="cap">Analysed</div></div>
+      <div><div class="num ok" id="stSynced">0</div><div class="cap">Synced</div></div>
+      <div><div class="num bad" id="stUnsynced">0</div><div class="cap">Unsynced</div></div>
+      <div><div class="num warn" id="stLow">0</div><div class="cap">Low confidence</div></div>
+    </div>
+    <div class="bar"><div id="barFill" class="fill"></div></div>
+    <div class="row"><span id="progressText" class="muted grow">Idle</span><button id="resumeJob" class="hidden">Resume</button><button id="cancelJob" disabled>Cancel</button></div>
+  </div>
+
+  <div class="card">
+    <div class="h2">5. Generate</div>
+    <button id="generate" class="cta" disabled>GENERATE FIRST DRAFT</button>
+    <div id="summary" class="summary hidden"></div>
+    <div class="row"><button id="openSequence" disabled>Open Sequence</button><button id="verifyImported" class="hidden">Verify imported sequence</button></div>
+  </div>
+
+  <div class="card">
+    <div class="h2">Review</div>
+    <div class="row">
+      <select id="filter">
+        <option value="ALL">All clips</option>
+        <option value="UNSYNCED">Unsynced</option>
+        <option value="LOW">Low confidence</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="HIGH">High</option>
+      </select>
+      <span id="reviewCount" class="muted small grow"></span>
+    </div>
+    <div id="reviewMsg" class="small"></div>
+    <div id="reviewList" class="review"></div>
+  </div>
+
+  <div class="card">
+    <div class="h2">Placement self-test</div>
+    <div class="muted small">Checks this Premiere installation end to end: the helper makes test takes with known answers, analyses them, then places them with both methods (UXP direct and XML import) into new sequences and reads every clip back. The method that passes becomes the default.</div>
+    <div class="row wrap"><button id="selftestQuick">Run quick test (24 clips)</button><button id="selftestFull">Run full test (200 clips)</button></div>
+    <div id="selftestOut" class="small"></div>
+  </div>
+
+  <div class="card">
+    <div class="h2">About</div>
+    <div id="about" class="muted small"></div>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+</html>

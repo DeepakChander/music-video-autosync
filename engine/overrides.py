@@ -26,6 +26,8 @@ def _span(c: ClipResult, start_ticks: int) -> Span:
 
 
 def lowest_free_track(result: SyncResult, clip: ClipResult, start_ticks: int) -> int:
+    """The clip's current track if the new span is free there (the panel can then apply the
+    correction as a plain move), otherwise the lowest free track."""
     me = span_for(clip.clip_id, clip.name, start_ticks, clip.duration_s, 0.0, clip.rate)
     busy: dict[int, list[Span]] = {}
     for c in result.clips:
@@ -36,11 +38,16 @@ def lowest_free_track(result: SyncResult, clip: ClipResult, start_ticks: int) ->
         if t is None or pos is None:
             continue
         busy.setdefault(t, []).append(_span(c, pos))
+    def free(t: int) -> bool:
+        return all(sp.end_ticks <= me.start_ticks or sp.start_ticks >= me.end_ticks for sp in busy.get(t, []))
+
+    current = effective_track(clip)
+    if current is not None and free(current):
+        return current
     track = 1
-    while True:
-        if all(sp.end_ticks <= me.start_ticks or sp.start_ticks >= me.end_ticks for sp in busy.get(track, [])):
-            return track
+    while not free(track):
         track += 1
+    return track
 
 
 def apply_override(result: SyncResult, clip_id: str, song_position_s: Optional[float], by: str,

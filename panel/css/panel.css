@@ -1,0 +1,82 @@
+/* Dark, minimal, close to Premiere's own panels. UXP: no CSS transitions/animations. */
+body {
+  background-color: #232323;
+  color: #d6d6d6;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 12px;
+  margin: 0;
+  padding: 8px;
+}
+.header { display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 4px 2px 10px 2px; }
+.app-name { font-size: 15px; font-weight: 600; color: #f0f0f0; }
+.app-sub { font-size: 11px; color: #8a8a8a; }
+.helper-status { display: flex; flex-direction: row; align-items: center; font-size: 11px; color: #b0b0b0; }
+.dot { width: 9px; height: 9px; border-radius: 5px; margin-right: 6px; }
+.dot.grey { background-color: #6a6a6a; }
+.dot.green { background-color: #3fbf7f; }
+.dot.amber { background-color: #e6a23c; }
+.dot.red { background-color: #e05a5a; }
+
+.card { background-color: #2c2c2c; border: 1px solid #3a3a3a; border-radius: 4px; padding: 10px; margin-bottom: 8px; }
+.h2 { font-size: 12px; font-weight: 600; color: #e8e8e8; margin-bottom: 6px; text-transform: none; }
+.row { display: flex; flex-direction: row; align-items: center; margin-top: 6px; }
+.row.wrap { flex-wrap: wrap; }
+.row > * { margin-right: 6px; }
+.grow { flex: 1; }
+.muted { color: #9a9a9a; }
+.small { font-size: 11px; }
+.label { color: #9a9a9a; width: 64px; }
+.hidden { display: none; }
+.checks label { display: block; margin: 3px 0; color: #cfcfcf; }
+
+button {
+  background-color: #3c3c3c; color: #e6e6e6; border: 1px solid #4a4a4a; border-radius: 3px;
+  padding: 4px 10px; font-size: 12px;
+}
+button:hover { background-color: #474747; }
+button:disabled { color: #6a6a6a; background-color: #333333; border-color: #3a3a3a; }
+button.primary { background-color: #2d6fb8; border-color: #2d6fb8; color: #ffffff; }
+button.primary:disabled { background-color: #2f3a46; border-color: #2f3a46; color: #7d8a99; }
+button.cta { width: 100%; padding: 9px; font-weight: 700; letter-spacing: 1px; background-color: #2d8ceb; border-color: #2d8ceb; color: #ffffff; }
+button.cta:disabled { background-color: #2f3a46; border-color: #2f3a46; color: #7d8a99; }
+button.mini { padding: 1px 6px; font-size: 11px; margin-right: 3px; }
+select, input[type="text"] { background-color: #1e1e1e; color: #e0e0e0; border: 1px solid #4a4a4a; border-radius: 3px; padding: 3px 5px; font-size: 12px; }
+
+.waveform { display: flex; flex-direction: row; align-items: center; height: 44px; margin-top: 8px; background-color: #1d1d1d; border-radius: 3px; padding: 0 2px; }
+.waveform .wbar { flex: 1; background-color: #5fb3e8; margin-right: 1px; }
+
+.banner { padding: 8px 10px; border-radius: 4px; margin-bottom: 8px; font-size: 12px; }
+.banner.error { background-color: #4a2424; border: 1px solid #7a3434; color: #ffd9d9; }
+.banner.warn { background-color: #4a3b1e; border: 1px solid #7a6230; color: #ffeccc; }
+.banner.info { background-color: #1f3547; border: 1px solid #2f5577; color: #d6ecff; }
+
+.stats { display: flex; flex-direction: row; justify-content: space-between; }
+.stats .num { font-size: 18px; font-weight: 600; color: #e8e8e8; }
+.stats .num.ok { color: #3fbf7f; }
+.stats .num.bad { color: #e05a5a; }
+.stats .num.warn { color: #e6a23c; }
+.stats .cap { font-size: 10px; color: #8a8a8a; }
+.bar { height: 6px; background-color: #1d1d1d; border-radius: 3px; margin-top: 8px; }
+.bar .fill { height: 6px; width: 0%; background-color: #2d8ceb; border-radius: 3px; }
+
+.summary { margin-top: 8px; padding: 8px; border-radius: 3px; background-color: #252525; border: 1px solid #3a3a3a; }
+.summary.ok { border-color: #2f6b4d; }
+.summary.bad { border-color: #7a3434; }
+
+.review .clip { border-top: 1px solid #383838; padding: 6px 0; }
+.review .top { display: flex; flex-direction: row; align-items: center; }
+.review .name { flex: 1; color: #e2e2e2; margin-left: 6px; }
+.review .pos { color: #cfcfcf; font-family: Consolas, monospace; }
+.review .why { color: #9a9a9a; font-size: 11px; margin-top: 2px; }
+.review .alts { margin-top: 3px; }
+.badge { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; color: #111111; }
+.badge.HIGH { background-color: #3fbf7f; }
+.badge.MEDIUM { background-color: #59a7e6; }
+.badge.LOW { background-color: #e6a23c; }
+.badge.UNSYNCED { background-color: #9a9a9a; }
+.badge.OVR { background-color: #c08cf0; }
+.posinput { width: 92px; }
+table.st { width: 100%; margin-top: 6px; border-collapse: collapse; }
+table.st td { padding: 2px 4px; border-top: 1px solid #383838; }
+.pass { color: #3fbf7f; font-weight: 600; }
+.fail { color: #e05a5a; font-weight: 600; }

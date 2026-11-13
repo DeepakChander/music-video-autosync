@@ -1,0 +1,4 @@
+name,true_timecode,expected_reason,rate,notes
+A001_C003,00:01:12:18,,1,verse 2 wide
+A001_C007,00:00:45:02,,2,slow-motion take shot at 2x playback
+B002_C001,,NO_AUDIO,,b-roll without audio

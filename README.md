@@ -37,3 +37,20 @@ Prove accuracy against known answers:
 ```
 
 Tests: `.venv/bin/python -m pytest` (FFmpeg required for the end-to-end tests).
+
+## Status
+
+| Phase | Gate | Evidence |
+|---|---|---|
+| 0 Spikes | Run on the client's Premiere by the panel's **Placement self-test** (no Premiere on the dev machine) | `docs/CLIENT_SMOKE_TEST.md` |
+| 1 Engine | Synthetic: PASS on two 200-take holdouts. Real 30-take set: pending client truth file | `docs/reports/phase1_*` |
+| 2 Helper | PASS: 200-clip job, kill + resume, all endpoints tested | `docs/reports/phase2_helper.md` |
+| 3 Placement | Logic tested against a simulated Premiere; real readback via the self-test | `panel/test/` |
+| 4 Panel UI | Every button wired to a real operation (tested) | `panel/test/ui.test.js` |
+| 5 Packaging | Windows build, silent install, installed-helper smoke, silent uninstall: workflow written, result recorded after its first run | `.github/workflows/release.yml` |
+| 6 Acceptance | Client's real music video project | `docs/CLIENT_SMOKE_TEST.md` |
+
+## Docs
+
+`docs/CLIENT_SMOKE_TEST.md` (start here) · `docs/INSTALL.md` · `docs/USER_GUIDE.md` ·
+`docs/LIMITATIONS.md` · `docs/DECISIONS.md` · `docs/LICENSES.md` · `docs/PREMIERE_API_NOTES.md`
