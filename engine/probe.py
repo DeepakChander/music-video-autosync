@@ -49,7 +49,7 @@ def find_tool(name: str) -> str:
     raise FFmpegNotFound(f"{name} not found (set AUTOSYNC_FFMPEG_DIR or install FFmpeg)")
 
 
-_ADDR = re.compile(r"\s*@\s*0x[0-9a-fA-F]+")
+_ADDR = re.compile(r"\s*@\s*(?:0x)?[0-9a-fA-F]{6,}")
 
 
 def clean_message(text: str) -> str:

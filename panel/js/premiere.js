@@ -96,7 +96,9 @@ function createPremiere(ppro, core, log) {
     let map = await walkClips(root);
     const missing = [...new Set(paths.filter((p) => p && !map.has(core.normPath(p))))];
     if (missing.length) {
-      const ok = await project.importFiles(missing, true, targetBin, false);
+      // targetBin is typed ProjectItem in the reference; a FolderItem is cast to it.
+      const bin = targetBin ? (ppro.ProjectItem.cast(targetBin) || targetBin) : null;
+      const ok = await project.importFiles(missing, true, bin, false);
       if (!ok) L.warn(`importFiles returned false for ${missing.length} file(s)`);
       map = await walkClips(root);
     }

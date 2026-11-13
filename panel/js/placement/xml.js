@@ -61,7 +61,7 @@ function createXmlAdapter(ppro, core, pr, common, api) {
     const tImport = Date.now();
     let ok = false;
     try {
-      ok = await project.importFiles([x.path], true, bins.runBin, false);
+      ok = await project.importFiles([x.path], true, ppro.ProjectItem.cast(bins.runBin) || bins.runBin, false);
     } catch (e) {
       report.notes.push(`importFiles threw: ${e && e.message ? e.message : e}`);
     }

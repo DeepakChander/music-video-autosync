@@ -100,7 +100,8 @@ jobs:
         run: |
           $app = "$env:LOCALAPPDATA\Programs\MusicVideoAutoSync"
           Start-Process "$app\unins000.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
-          Start-Sleep -Seconds 5
+          # unins000.exe hands over to a temporary copy of itself and returns at once: poll.
+          for ($i = 0; $i -lt 60 -and (Test-Path $app); $i++) { Start-Sleep -Seconds 2 }
           foreach ($d in $app, "$env:APPDATA\MusicVideoAutoSync", "$env:LOCALAPPDATA\MusicVideoAutoSync") {
             if (Test-Path $d) { throw "left behind: $d" }
           }

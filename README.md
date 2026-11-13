@@ -47,7 +47,7 @@ Tests: `.venv/bin/python -m pytest` (FFmpeg required for the end-to-end tests).
 | 2 Helper | PASS: 200-clip job, kill + resume, all endpoints tested | `docs/reports/phase2_helper.md` |
 | 3 Placement | Logic tested against a simulated Premiere; real readback via the self-test | `panel/test/` |
 | 4 Panel UI | Every button wired to a real operation (tested) | `panel/test/ui.test.js` |
-| 5 Packaging | Windows build, silent install, installed-helper smoke, silent uninstall: workflow written, result recorded after its first run | `.github/workflows/release.yml` |
+| 5 Packaging | PASS on a Windows runner: build, silent install, installed-helper end-to-end smoke (7/7), silent uninstall leaves nothing. Panel install via Adobe UPIA not testable there | `docs/reports/phase5_packaging.md` |
 | 6 Acceptance | Client's real music video project | `docs/CLIENT_SMOKE_TEST.md` |
 
 ## Docs

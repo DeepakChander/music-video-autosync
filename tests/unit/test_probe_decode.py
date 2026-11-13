@@ -59,3 +59,10 @@ def test_av_offset_from_container(tmp_path, ffmpeg_bin):
     p = tmp_path / "e.mov"
     _mk(ffmpeg_bin, p, dur=3.0, itsoffset=0.25)
     assert abs(probe(str(p)).av_offset_s - 0.25) < 0.01
+
+
+def test_clean_message_strips_addresses_on_every_platform():
+    from engine.probe import clean_message
+    assert clean_message("[mov,mp4 @ 0x7480c10000] moov atom not found") == "[mov,mp4] moov atom not found"
+    # Windows builds print the pointer without 0x (seen on the windows-latest CI runner)
+    assert clean_message("[mov,mp4,m4a @ 000001f78e73de00] moov atom not found") == "[mov,mp4,m4a] moov atom not found"

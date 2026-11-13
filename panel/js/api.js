@@ -26,23 +26,21 @@ function createApi(deps) {
   const base = `http://127.0.0.1:${port}`;
   let token = deps.token || null;
 
+  // The installer's token file wins (a reinstall writes a new one); a pasted token is the fallback.
   async function loadToken() {
     if (token) return token;
-    if (deps.storage) {
-      const saved = deps.storage.getItem("autosync.token");
-      if (saved) { token = saved; return token; }
-    }
+    let path = null;
     if (deps.fs && deps.os) {
       const home = String(deps.os.homedir()).replace(/\\/g, "/");
-      const path = `${home}/AppData/Roaming/MusicVideoAutoSync/token`;
+      path = `${home}/AppData/Roaming/MusicVideoAutoSync/token`;
       try {
-        token = String(await deps.fs.readFile(path, { encoding: "utf-8" })).trim();
-        return token;
-      } catch (e) {
-        throw new HelperError("TOKEN_NOT_FOUND", `Pairing token not found at ${path}. Paste it from the helper's tray menu (Copy pairing token).`, 0);
-      }
+        const t = String(await deps.fs.readFile(path, { encoding: "utf-8" })).trim();
+        if (t) { token = t; return token; }
+      } catch (e) { /* fall back to a pasted token */ }
     }
-    throw new HelperError("TOKEN_NOT_FOUND", "No pairing token. Paste it from the helper's tray menu.", 0);
+    const saved = deps.storage ? deps.storage.getItem("autosync.token") : null;
+    if (saved) { token = saved; return token; }
+    throw new HelperError("TOKEN_NOT_FOUND", `Pairing token not found${path ? ` at ${path}` : ""}. Paste it from the helper's tray menu (Copy pairing token).`, 0);
   }
 
   function setToken(t) {
@@ -70,6 +68,7 @@ function createApi(deps) {
     try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { error: { code: "BAD_RESPONSE", message: text.slice(0, 200) } }; }
     if (!res.ok) {
       const err = (data && data.error) || {};
+      if (res.status === 401) token = null; // re-read the token file on the next call
       throw new HelperError(err.code || `HTTP_${res.status}`, err.message || `HTTP ${res.status}`, res.status);
     }
     return data;
