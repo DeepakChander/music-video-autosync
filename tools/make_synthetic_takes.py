@@ -64,7 +64,11 @@ class Take:
 
 
 def _ff(cmd: list[str]) -> None:
-    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if cmd and cmd[0] == "ffmpeg":
+        from engine.probe import find_tool  # bundled FFmpeg when frozen, else PATH
+        cmd = [find_tool("ffmpeg")] + cmd[1:]
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+                          creationflags=0x08000000 if os.name == "nt" else 0)
     if proc.returncode != 0:
         raise RuntimeError("ffmpeg failed: " + " ".join(cmd) + "\n" + proc.stderr.decode()[-800:])
 
@@ -188,7 +192,8 @@ def chorus_sections(song: Song):
 
 
 def build(out: str, count: int, seed: int, master_path: Optional[str], video_codec: str,
-          container: str, case_filter: Optional[list[str]] = None, size: str = "160x90") -> list[Take]:
+          container: str, case_filter: Optional[list[str]] = None, size: str = "160x90",
+          progress=None, cancel=None) -> list[Take]:
     rng = np.random.default_rng(seed)
     os.makedirs(os.path.join(out, "takes"), exist_ok=True)
     os.makedirs(os.path.join(out, "master"), exist_ok=True)
@@ -216,6 +221,10 @@ def build(out: str, count: int, seed: int, master_path: Optional[str], video_cod
     takes: list[Take] = []
     tmpdir = tempfile.mkdtemp(prefix="mvas_")
     for i, case in enumerate(order):
+        if cancel is not None and cancel.is_set():
+            break
+        if progress is not None:
+            progress(i, count)
         name = f"T{i + 1:03d}_{case}"
         fps = str(rng.choice(FPS_CHOICES))
         rate, drift_ppm, expected = 1.0, 0.0, ""

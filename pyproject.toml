@@ -22,6 +22,7 @@ build = ["pyinstaller>=6"]
 
 [project.scripts]
 autosync-engine = "engine.cli:main"
+autosync-helper = "helper.__main__:main"
 
 [tool.setuptools]
-packages = ["engine"]
+packages = ["engine", "helper", "export", "tools"]

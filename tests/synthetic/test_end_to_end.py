@@ -1,6 +1,5 @@
 """Synthetic end-to-end: generate takes with known truth, analyse, check the spec's gates."""
 
-import csv
 import os
 import threading
 
@@ -11,19 +10,13 @@ from engine.result import Reason, SequenceInfo, Status
 from engine.settings import EngineSettings
 from tests.conftest import needs_ffmpeg
 from tools.accuracy_report import check_gate, evaluate
-from tools.make_synthetic_takes import CASES_DEFAULT, build
 
 SEQ = SequenceInfo(fps_num=24000, fps_den=1001, width=1920, height=1080)
 
 
 @pytest.fixture(scope="module")
-def synth(tmp_path_factory):
-    out = tmp_path_factory.mktemp("synth")
-    build(str(out), count=2 * len(CASES_DEFAULT), seed=11, master_path=None, video_codec="mpeg4",
-          container="mov")
-    with open(out / "truth.csv", newline="", encoding="utf-8") as f:
-        truth = list(csv.DictReader(f))
-    return str(out), truth
+def synth(synth_set):
+    return synth_set["dir"], synth_set["truth"]
 
 
 def _master(out):

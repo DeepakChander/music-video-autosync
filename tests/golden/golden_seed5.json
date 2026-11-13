@@ -2,7 +2,7 @@
   "T001_chorus": {
     "rate": 1.0,
     "reason": "AMBIGUOUS",
-    "song_position_s": 164.693695,
+    "song_position_s": 61.837692,
     "status": "LOW",
     "video_track": 5
   },
@@ -74,7 +74,7 @@
     "reason": "AMBIGUOUS",
     "song_position_s": 162.9505,
     "status": "LOW",
-    "video_track": 4
+    "video_track": 3
   },
   "T012_unrelated": {
     "rate": null,
@@ -86,16 +86,16 @@
   "T013_chorus": {
     "rate": 1.0,
     "reason": "AMBIGUOUS",
-    "song_position_s": 184.875427,
+    "song_position_s": 64.876747,
     "status": "LOW",
-    "video_track": 1
+    "video_track": 6
   },
   "T014_slowmo": {
     "rate": 2.0,
     "reason": "AMBIGUOUS",
-    "song_position_s": 156.455215,
+    "song_position_s": 53.599224,
     "status": "LOW",
-    "video_track": 3
+    "video_track": 4
   },
   "T015_room": {
     "rate": 1.0,

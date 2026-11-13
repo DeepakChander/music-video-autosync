@@ -15,6 +15,7 @@ import numpy as np
 from scipy.fft import irfft, next_fast_len, rfft
 from scipy.ndimage import maximum_filter1d
 
+from .features import apply_stats, n_frames, raw_features
 from .settings import EngineSettings
 
 
@@ -22,11 +23,12 @@ from .settings import EngineSettings
 class Candidate:
     rate: float
     lag: int                      # feature frames; song frame index of clip frame 0
-    score: float                  # normalised feature correlation at `lag`
+    score: float                  # normalised feature correlation (rescored after the fine pass)
     position_s: float             # coarse song position (lag * hop / sr)
     fine_position_s: Optional[float] = None
     fine_peak: Optional[float] = None
     fine_used: bool = False
+    coarse_score: Optional[float] = None
 
     @property
     def best_position_s(self) -> float:
@@ -36,14 +38,17 @@ class Candidate:
 @dataclass
 class MasterRateView:
     rate: float
-    feats: np.ndarray             # (Tm, D)
+    feats: np.ndarray             # (Tm, D) standardised with the master's own statistics
     energy_cumsum: np.ndarray     # (Tm + 1,)
+    mu: Optional[np.ndarray] = None   # raw-feature statistics, reused to rescore segments
+    sd: Optional[np.ndarray] = None
     _fft_cache: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def build(cls, rate: float, feats: np.ndarray) -> "MasterRateView":
+    def build(cls, rate: float, feats: np.ndarray, mu: Optional[np.ndarray] = None,
+              sd: Optional[np.ndarray] = None) -> "MasterRateView":
         e = np.concatenate([[0.0], np.cumsum((feats.astype(np.float64) ** 2).sum(axis=1))])
-        return cls(rate=rate, feats=feats, energy_cumsum=e)
+        return cls(rate=rate, feats=feats, energy_cumsum=e, mu=mu, sd=sd)
 
     def fft(self, n: int) -> np.ndarray:
         f = self._fft_cache.get(n)
@@ -174,6 +179,38 @@ def refine(c: Candidate, master_audio: np.ndarray, clip_audio: np.ndarray, s: En
     c.fine_used = (pos is not None and peak >= s.fine_min_peak
                    and abs(pos - c.position_s) <= s.fine_max_shift_s)
     return c
+
+
+def rescore(c: Candidate, clip_feats: np.ndarray, master_audio: np.ndarray, view: MasterRateView,
+            s: EngineSettings) -> float:
+    """Score a candidate on master features recomputed at its exact (fine) sample position.
+
+    Coarse scores compare clip frames with master frames on the master's fixed 10 ms grid, so two
+    positions holding identical audio (a repeated chorus) can score differently just because they
+    sit at different sub-hop phases of that grid; on short noisy clips that alone reached a 1.17
+    ratio. Recomputing the master features on the clip's own frame grid removes the phase error,
+    so exact repeats score the same and are flagged AMBIGUOUS. Same score formula as the coarse
+    search (uncentred normalised correlation over the overlap)."""
+    if view.mu is None or view.sd is None:
+        return c.score
+    hop = s.hop_length
+    pos = int(round(c.best_position_s * s.analysis_sr))
+    tc = clip_feats.shape[0]
+    f0 = 0 if pos >= 0 else -(pos // hop)          # first clip frame that starts inside the song
+    m_start = pos + f0 * hop
+    need = tc - f0
+    if need <= 0 or m_start >= master_audio.size:
+        return c.score
+    seg = master_audio[m_start: m_start + (need - 1) * hop + s.n_fft]
+    if seg.size < s.n_fft:
+        return c.score
+    m = apply_stats(raw_features(seg, s, c.rate), view.mu, view.sd, s)
+    k = min(need, m.shape[0], n_frames(seg.size, s))
+    if k < min_overlap_frames(tc, s):
+        return c.score
+    cc = clip_feats[f0: f0 + k].astype(np.float64)
+    mm = m[:k].astype(np.float64)
+    return float((cc * mm).sum() / np.sqrt(max((cc * cc).sum() * (mm * mm).sum(), 1e-12)))
 
 
 def peak_ratio(best: Candidate, others: list[Candidate], s: EngineSettings) -> tuple[float, list[Candidate]]:

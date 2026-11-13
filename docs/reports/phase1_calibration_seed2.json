@@ -1,34 +1,36 @@
 {
   "set": "synthetic seed 2, 400 audio-only takes (tools/make_synthetic_takes.py --count 400 --seed 2 --container wav)",
+  "algorithm_revision": 2,
   "stage1": {
     "n_clips": 400,
-    "n_right": 274,
-    "n_wrong": 57,
+    "n_right": 281,
+    "n_wrong": 50,
     "max_unrelated_score": 0.2092,
     "noise_floor": 0.26,
     "ambiguity_ratio": 1.1,
-    "right_score_p05": 0.4784,
+    "right_score_p05": 0.4684,
     "safe_check": {
       "high_default": true,
       "medium_default": true
     }
   },
-  "stage1_wrong_cases_count": 57,
-  "stage1_wrong_max_unique_fraction": 0.0058,
+  "stage1_wrong_cases_count": 50,
+  "stage1_wrong_max_peak_ratio": 1.017,
+  "stage1_wrong_max_unique_fraction": 0.0,
   "stage2": {
     "noise_floor_used": 0.26,
     "ambiguity_ratio_used": 1.1,
-    "placed": 237,
+    "placed": 238,
     "placed_wrong": [],
     "right_score_p01_p05_p50": [
-      0.4555,
-      0.4802,
-      0.6343
+      0.4399,
+      0.4685,
+      0.6275
     ],
     "right_ratio_p01_p05_p50": [
-      1.1439,
-      1.1798,
-      1.873
+      1.1273,
+      1.1746,
+      1.8745
     ],
     "right_window_agreement_lt_1": 6,
     "right_window_agreement_values": [

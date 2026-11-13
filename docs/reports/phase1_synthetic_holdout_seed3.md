@@ -1,8 +1,8 @@
-# Phase 1 gate - synthetic holdout (seed 3, 200 ProRes takes, 24000/1001 sequence)
+# Phase 1 gate - synthetic holdout (seed3, 200 ProRes takes, 24000/1001 sequence)
 
 - **engine_version**: 0.1.0
 - **sequence fps**: 24000/1001
-- **analysis wall time (s)**: 8.93
+- **analysis wall time (s)**: 15.09
 - **gate**: synthetic: PASS
 
 | Metric | Value |
@@ -24,7 +24,7 @@
 | abs_error_ms_p50 | 11.028 |
 | abs_error_ms_p95 | 19.586 |
 | abs_error_ms_max | 20.625 |
-| status_counts | {'MEDIUM': 44, 'LOW': 47, 'HIGH': 78, 'UNSYNCED': 31} |
+| status_counts | {'MEDIUM': 41, 'LOW': 48, 'HIGH': 80, 'UNSYNCED': 31} |
 
 ## Per case
 
@@ -32,17 +32,17 @@
 |---|---|
 | avoffset | {'HIGH': 4, 'within_1f': 6, 'LOW': 2} |
 | chorus | {'LOW': 16, 'within_1f': 5} |
-| clean | {'MEDIUM': 4, 'within_1f': 16, 'HIGH': 10, 'LOW': 6} |
+| clean | {'MEDIUM': 3, 'within_1f': 16, 'HIGH': 11, 'LOW': 6} |
 | corrupt | {'UNSYNCED': 2} |
 | drift | {'MEDIUM': 6, 'within_1f': 12, 'HIGH': 3, 'LOW': 3} |
 | long | {'HIGH': 4, 'within_1f': 4} |
-| lossy | {'HIGH': 11, 'within_1f': 23, 'MEDIUM': 5, 'LOW': 8} |
+| lossy | {'HIGH': 12, 'within_1f': 23, 'MEDIUM': 4, 'LOW': 8} |
 | noaudio | {'UNSYNCED': 6} |
-| preroll | {'HIGH': 12, 'within_1f': 19, 'MEDIUM': 6, 'LOW': 2} |
-| room | {'MEDIUM': 12, 'within_1f': 41, 'LOW': 7, 'HIGH': 25} |
-| short | {'MEDIUM': 4, 'within_1f': 7, 'LOW': 3, 'UNSYNCED': 5} |
+| preroll | {'HIGH': 12, 'within_1f': 20, 'MEDIUM': 6, 'LOW': 2} |
+| room | {'MEDIUM': 12, 'within_1f': 42, 'LOW': 7, 'HIGH': 25} |
+| short | {'MEDIUM': 4, 'within_1f': 6, 'LOW': 3, 'UNSYNCED': 5} |
 | silent | {'UNSYNCED': 4} |
-| slowmo | {'HIGH': 9, 'within_1f': 16, 'MEDIUM': 7} |
+| slowmo | {'HIGH': 9, 'within_1f': 16, 'MEDIUM': 6, 'LOW': 1} |
 | unrelated | {'UNSYNCED': 14} |
 
 ## Drift (reported, never corrected)

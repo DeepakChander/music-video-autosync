@@ -73,8 +73,8 @@ def standardise(f: np.ndarray) -> np.ndarray:
     return ((f - mu) / np.maximum(sd, 1e-6)).astype(np.float32)
 
 
-def features(x: np.ndarray, s: EngineSettings, rate: float = 1.0) -> np.ndarray:
-    """(T, D) standardised MFCC c0..c(n_mfcc-1) plus a weighted onset-strength column.
+def raw_features(x: np.ndarray, s: EngineSettings, rate: float = 1.0) -> np.ndarray:
+    """(T, D) unstandardised MFCC c0..c(n_mfcc-1) plus onset strength (positive spectral flux).
 
     `x` must already be stretched by `rate` (see stretch()). The mel range is capped at the
     content limit of a rate-r match so empty high bands do not dilute the correlation.
@@ -82,8 +82,25 @@ def features(x: np.ndarray, s: EngineSettings, rate: float = 1.0) -> np.ndarray:
     lm = log_mel(x, s, s.feature_fmax_for_rate(rate))
     mf = dct(lm, type=2, norm="ortho", axis=1)[:, : s.n_mfcc]
     flux = np.maximum(0.0, np.diff(lm, axis=0, prepend=lm[:1])).sum(axis=1, keepdims=True)
-    out = np.concatenate([standardise(mf), standardise(flux) * np.float32(np.sqrt(s.onset_weight))], axis=1)
+    return np.concatenate([mf, flux], axis=1).astype(np.float32)
+
+
+def feature_stats(raw: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    return raw.mean(axis=0, keepdims=True), np.maximum(raw.std(axis=0, keepdims=True), 1e-6)
+
+
+def apply_stats(raw: np.ndarray, mu: np.ndarray, sd: np.ndarray, s: EngineSettings) -> np.ndarray:
+    """Standardise with given statistics; the onset column is weighted by sqrt(onset_weight)."""
+    out = (raw - mu) / sd
+    out[:, -1] *= np.float32(np.sqrt(s.onset_weight))
     return out.astype(np.float32)
+
+
+def features(x: np.ndarray, s: EngineSettings, rate: float = 1.0) -> np.ndarray:
+    """(T, D) features standardised with their own statistics (per coefficient)."""
+    raw = raw_features(x, s, rate)
+    mu, sd = feature_stats(raw)
+    return apply_stats(raw, mu, sd, s)
 
 
 def rate_fraction(rate: float) -> Fraction:

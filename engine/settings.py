@@ -105,6 +105,10 @@ class EngineSettings(BaseModel):
     # design: HIGH also needs the sample-level fine pass to have succeeded, so a HIGH position
     # is never only the 10 ms coarse estimate.
     high_requires_fine: bool = True
+    # design: candidates within this score ratio are exact repeats differing only by float noise
+    # (observed <= 1.0002 after rescoring); an AMBIGUOUS clip reports the earliest of them so the
+    # result is identical on every CPU. Wider gaps keep the higher-scoring candidate.
+    tie_ratio: float = 1.005
 
     # --- policy ------------------------------------------------------------------------
     # Approved by Deepak 2026-11-13 (section 12): a clip that starts before the song gets a

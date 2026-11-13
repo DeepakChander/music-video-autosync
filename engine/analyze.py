@@ -20,12 +20,12 @@ from typing import Callable, Iterable, Optional
 
 import numpy as np
 
-from . import __version__
+from . import ALGORITHM_REVISION, __version__
 from .confidence import tier
 from .decode import DecodeError, decode_mono, rms_dbfs
-from .features import features, stretch
-from .layout import assign_tracks, span_for
-from .locate import Candidate, MasterRateView, coarse_candidates, peak_ratio, refine
+from .features import apply_stats, feature_stats, features, raw_features, stretch
+from .layout import assign_tracks, fill_gaps, span_for
+from .locate import Candidate, MasterRateView, coarse_candidates, peak_ratio, refine, rescore
 from .probe import MediaInfo, ProbeError, probe
 from .result import (Alternate, ClipResult, Confidence, Diagnostics, Drift, MasterInfo, Reason,
                      SequenceInfo, Status, Summary, SyncResult)
@@ -101,7 +101,7 @@ class MasterContext:
 
 
 def master_cache_file(cache_dir: str, sha: str, s: EngineSettings) -> str:
-    key = hashlib.sha256((sha + "|" + "|".join(s.feature_hash(r) for r in s.rates)).encode()).hexdigest()[:24]
+    key = hashlib.sha256((f"{sha}|a{ALGORITHM_REVISION}|" + "|".join(s.feature_hash(r) for r in s.rates)).encode()).hexdigest()[:24]
     return os.path.join(cache_dir, "master", f"{key}.npz")
 
 
@@ -119,30 +119,38 @@ def load_master(path: str, s: EngineSettings, cache_dir: Optional[str] = None) -
     cache_file = master_cache_file(cache_dir, sha, s) if cache_dir else None
     audio = None
     feats: dict[float, np.ndarray] = {}
+    stats: dict[float, tuple[np.ndarray, np.ndarray]] = {}
     if cache_file and os.path.isfile(cache_file):
         try:
             with np.load(cache_file) as z:
                 audio = z["audio"]
                 for r in s.rates:
                     feats[r] = z[f"feats_{r:g}"]
+                    stats[r] = (z[f"mu_{r:g}"], z[f"sd_{r:g}"])
         except Exception:
-            audio, feats = None, {}
+            audio, feats, stats = None, {}, {}
     if audio is None or len(feats) != len(s.rates):
         try:
             audio = decode_mono(path, s.analysis_sr)
         except DecodeError as e:
             raise MasterError(f"cannot decode master: {e}") from e
         # The master is never time-stretched: rate r only narrows its feature band.
-        feats = {r: features(audio, s, rate=r) for r in s.rates}
+        for r in s.rates:
+            raw = raw_features(audio, s, rate=r)
+            stats[r] = feature_stats(raw)
+            feats[r] = apply_stats(raw, *stats[r], s)
         if cache_file:
             os.makedirs(os.path.dirname(cache_file), exist_ok=True)
             tmp = cache_file + ".tmp.npz"
-            np.savez(tmp, audio=audio, **{f"feats_{r:g}": f for r, f in feats.items()})
+            arrays = {f"feats_{r:g}": f for r, f in feats.items()}
+            for r, (mu, sd) in stats.items():
+                arrays[f"mu_{r:g}"], arrays[f"sd_{r:g}"] = mu, sd
+            np.savez(tmp, audio=audio, **arrays)
             os.replace(tmp, cache_file)
     duration = audio.size / s.analysis_sr
     info = MasterInfo(path=os.path.abspath(path), sha256=sha, duration_s=_r(duration, 6),
                       sample_rate=int(mi.audio_sample_rate or s.analysis_sr))
-    views = {r: MasterRateView.build(r, feats[r]) for r in s.rates}
+    views = {r: MasterRateView.build(r, feats[r], *stats[r]) for r in s.rates}
     return MasterContext(info=info, audio=audio, views=views)
 
 
@@ -167,7 +175,8 @@ def _unsynced(clip_id: str, path: str, name: str, reason: Reason, detail: str, d
         source_fps=info.video_fps if info else None, has_audio=has_audio,
         status=Status.UNSYNCED, reason=reason, reason_detail=detail,
         confidence=conf or Confidence(), alternates=alts or [],
-        diagnostics=Diagnostics(audio_rms_dbfs=_r(rms, 2), av_offset_s=_r(info.av_offset_s if info else 0.0, 6) or 0.0),
+        diagnostics=Diagnostics(audio_rms_dbfs=_r(rms, 2), av_offset_s=_r(info.av_offset_s if info else 0.0, 6) or 0.0,
+                                audio_channels=info.audio_channels if info else 0),
     )
 
 
@@ -208,12 +217,24 @@ def analyze_clip(path: str, master: MasterContext, s: EngineSettings, seq_fps: F
         cands.extend(coarse_candidates(f, master.views[rate], s))
     if not cands:
         return _unsynced(clip_id, ap, name, Reason.NO_MATCH, "no overlap with the song", duration, info, True, rms)
-    cands.sort(key=lambda c: (-c.score, c.rate, c.lag))
+    # Fine-align every candidate, then rescore it on the master's audio at its exact position so
+    # that exact repeats compare on equal terms (see locate.rescore).
     for c in cands:
-        if c is cands[0] or c.score >= s.noise_floor:
-            refine(c, master.audio, stretched[c.rate], s)
+        refine(c, master.audio, stretched[c.rate], s)
+        c.coarse_score = c.score
+        c.score = rescore(c, feats[c.rate], master.audio, master.views[c.rate], s)
+    cands.sort(key=lambda c: (-c.score, c.rate, c.lag))
     best = cands[0]
     ratio, distinct = peak_ratio(best, cands, s)
+    if ratio < s.ambiguity_ratio:
+        # Exact repeats score equal up to float noise, which differs between CPUs. Report the
+        # earliest near-tied position so the (LOW, not placed by default) result is the same on
+        # every machine; the others stay in alternates.
+        ties = [c for c in cands if c.score >= best.score / s.tie_ratio]
+        chosen = min(ties, key=lambda c: (round(c.best_position_s, 3), c.rate))
+        if chosen is not best:
+            best = chosen
+            _ratio, distinct = peak_ratio(best, cands, s)
 
     seq_frame_s = float(1 / seq_fps)
     tol = s.agreement_tolerance_frames * seq_frame_s
@@ -268,7 +289,7 @@ def analyze_clip(path: str, master: MasterContext, s: EngineSettings, seq_fps: F
         diagnostics=Diagnostics(raw_song_position_s=_r(raw, 6), av_offset_s=_r(av, 6) or 0.0,
                                 fine_peak=_r(best.fine_peak, 4), fine_used=best.fine_used,
                                 audio_rms_dbfs=_r(rms, 2), frame_snap_error_s=_r(snap_err, 6),
-                                windows_evaluated=wrep.evaluated),
+                                windows_evaluated=wrep.evaluated, audio_channels=info.audio_channels),
     )
 
 
@@ -301,7 +322,7 @@ def _work(path: str) -> str:
 # --------------------------------------------------------------------------------------
 
 def clip_cache_key(clip_id: str, master_sha: str, s: EngineSettings, fps: Fraction) -> str:
-    blob = f"{clip_id}|{master_sha}|{s.settings_hash()}|{__version__}|{fps.numerator}/{fps.denominator}"
+    blob = f"{clip_id}|{master_sha}|{s.settings_hash()}|{__version__}|a{ALGORITHM_REVISION}|{fps.numerator}/{fps.denominator}"
     return hashlib.sha256(blob.encode()).hexdigest()[:24]
 
 
@@ -313,12 +334,19 @@ def _counts(results: Iterable[ClipResult]) -> dict:
 
 
 def apply_layout(clips: list[ClipResult]) -> int:
-    spans = [span_for(c.clip_id, c.name, int(c.song_position_ticks), c.duration_s, c.source_in_s, c.rate)
-             for c in clips if c.status != Status.UNSYNCED and c.song_position_ticks is not None]
-    tracks = assign_tracks(spans)
+    """Returns the number of video tracks used by the clips placed by default (HIGH/MEDIUM)."""
+    def sp(c: ClipResult):
+        return span_for(c.clip_id, c.name, int(c.song_position_ticks), c.duration_s, c.source_in_s, c.rate)
+    primary = [c for c in clips if c.status in (Status.HIGH, Status.MEDIUM)]
+    secondary = [c for c in clips if c.status == Status.LOW and c.song_position_ticks is not None]
+    tracks = assign_tracks(sp(c) for c in primary)
+    existing: dict[int, list] = {}
+    for c in primary:
+        existing.setdefault(tracks[c.clip_id], []).append(sp(c))
+    tracks.update(fill_gaps((sp(c) for c in secondary), existing))
     for c in clips:
         c.video_track = tracks.get(c.clip_id)
-    return max(tracks.values(), default=0)
+    return max((tracks[c.clip_id] for c in primary), default=0)
 
 
 def analyze(master_path: str, clip_paths: list[str], seq: SequenceInfo, s: EngineSettings,

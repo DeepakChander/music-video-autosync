@@ -103,6 +103,7 @@ class Diagnostics(_Model):
     fine_peak: Optional[float] = None
     fine_used: bool = False
     audio_rms_dbfs: Optional[float] = None
+    audio_channels: int = 0
     # Snapped minus exact position, seconds.
     frame_snap_error_s: Optional[float] = None
     windows_evaluated: int = 0

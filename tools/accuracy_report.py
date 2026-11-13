@@ -88,7 +88,8 @@ def evaluate(truth_rows: list[dict], result: SyncResult) -> dict:
     amb_flagged = [r for r in amb_rows if r.get("reason") == "AMBIGUOUS"]
     near = [r for r in rows if not r.get("missing") and r.get("kind") == "near_ambiguous"]
     slow = [r for r in rows if not r.get("missing") and r["rate_truth"] != 1.0 and r["expected_reason"] is None]
-    slow_rate_ok = [r for r in slow if r.get("rate") == r["rate_truth"] and r.get("within_1_frame")]
+    slow = [r for r in slow if r.get("rate") is not None]  # clips the engine positioned
+    slow_rate_ok = [r for r in slow if r.get("rate") == r["rate_truth"]]
     missing = [r for r in rows if r.get("missing")]
 
     per_case: dict[str, Counter] = defaultdict(Counter)

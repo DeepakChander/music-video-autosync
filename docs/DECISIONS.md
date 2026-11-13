@@ -97,12 +97,15 @@ the spec's acceptance test is "flags clips with no usable audio".
 ## D-008 Confidence threshold calibration (PROVISIONAL: synthetic only)
 
 - **Calibration set:** synthetic seed 2, 400 audio-only takes, all 14 cases
-  (`tools/calibrate.py`, output `docs/reports/phase1_calibration_seed2.json`).
-- **Stage 1** (no floor, no ambiguity cut): 274 correct, 57 wrong positions. Every wrong position was
-  a clip lying in audio that repeats exactly elsewhere (unique fraction <= 0.006), with
-  peak_ratio <= 1.041. Unrelated-song clips scored at most 0.209.
-- **Stage 2** (floor 0.26, ambiguity 1.10 applied): 237 clips placeable, **0 wrong**. Correct clips:
-  score p01 0.456 / p50 0.634, peak_ratio p01 1.14 / p05 1.18 / p50 1.87, window agreement < 1 for 6.
+  (`tools/calibrate.py`, output `docs/reports/phase1_calibration_seed2.json`, algorithm revision 2;
+  revisions 3-5 change only tie handling and LOW layout, not scores or ratios).
+- **Stage 1** (no floor, no ambiguity cut): 281 correct, 50 wrong positions. Every wrong position was
+  a clip lying entirely in audio that repeats exactly elsewhere (unique fraction 0.0), with
+  peak_ratio <= 1.017. Unrelated-song clips scored at most 0.209.
+- **Stage 2** (floor 0.26, ambiguity 1.10 applied): 238 clips placeable, **0 wrong**. Correct clips:
+  score p01 0.440 / p50 0.628, peak_ratio p01 1.127 / p05 1.175 / p50 1.875, window agreement < 1 for 6.
+- (Before D-013 the same run gave 57 wrong with max ratio 1.041; the margins below were set then
+  and still hold.)
 - **Chosen values** (margins added for real-world audio the synthetic set does not cover):
   | Setting | Value | Basis |
   |---|---|---|
@@ -111,9 +114,12 @@ the spec's acceptance test is "flags clips with no usable audio".
   | HIGH | score >= 0.45, ratio >= 1.50, all windows agree, fine pass used | evidence strength |
   | MEDIUM | score >= 0.35, ratio >= 1.15, window agreement >= 0.6 | evidence strength |
   | short clips (< 6 s, no windows) | MEDIUM at most | spec: HIGH needs window agreement |
-- **Holdout check:** synthetic seed 3, 200 ProRes video takes, never used for calibration:
-  100% of unique takes within 1 frame, 0 wrong HIGH/MEDIUM, 0 unrelated/no-audio placed,
-  100% chorus-only flagged or correct, rate search 100% (`docs/reports/phase1_synthetic_holdout_seed3.md`).
+- **Holdout checks** (never used for calibration), algorithm revision 5:
+  | Set | Sequence | Unique within 1 frame | Wrong HIGH/MEDIUM | Unrelated/no-audio placed | Chorus-only flagged/correct | 2x rate found | 200 clips wall time |
+  |---|---|---|---|---|---|---|---|
+  | seed 3, 200 ProRes takes | 23.976 | 100% (106/106) | 0 | 0 | 100% | 100% | 15.1 s |
+  | seed 4, 200 ProRes takes | 25 | 100% | 0 | 0 | 100% | 100% | 14.5 s |
+  Machine: Apple M5, 10 cores (9 workers); mean take 19.4 s. Reports in `docs/reports/`.
 - **Status:** PROVISIONAL. The spec requires the real 30-take set; thresholds must be re-checked on
   it with `tools/calibrate.py` (it accepts any set with a truth.csv) before Deepak approves them.
 - **What would change it:** any real take rated HIGH or MEDIUM that is wrong by more than 1 frame.
@@ -152,3 +158,54 @@ Pinned in `requirements*.txt`; licenses in `docs/LICENSES.md`. All permissive (B
 except `pystray` (LGPL-3.0), used only by the Windows tray launcher. To keep LGPL relinking possible,
 the PyInstaller spec ships pystray as loose `.py` files (`module_collection_mode = "py"`) that a
 user can replace. FFmpeg is an LGPL build called as a separate process (never linked).
+
+## D-013 Candidates are rescored at their exact sample position
+
+- **Found by:** the helper's self-test (14 takes, seed 3): a 2.3 s take lying inside a repeated
+  pre-chorus was rated MEDIUM at the wrong copy (score ratio 1.17 between identical audio).
+- **Cause:** coarse scores compare clip frames with the master's fixed 10 ms frame grid. Copies of a
+  section sit at different sub-hop phases of that grid, so identical audio scores differently;
+  on short noisy clips the difference reached 17%.
+- **Choice:** after the fine pass, every candidate is rescored on master features recomputed on the
+  clip's own frame grid at its exact sample position (`locate.rescore`), standardised with the
+  master's global statistics. Identical audio now scores within 0.02% (T009: 0.4528 / 0.4527 /
+  0.4527) and is flagged AMBIGUOUS. Regression covered by `tests/helper/test_api.py::test_selftest_job_and_accuracy`.
+- **Cache safety:** `engine.ALGORITHM_REVISION` is part of every cache key, so results from an older
+  algorithm are never reused.
+
+## D-014 Ties between exact repeats
+
+Exact repeats score equal up to float noise, which can differ between CPUs. When a clip is
+AMBIGUOUS, the reported position is the earliest candidate within `tie_ratio` (1.005) of the best;
+anything further apart keeps the higher score (an earlier version used the full ambiguity ratio and
+discarded real evidence on one holdout take, T111). The clip stays LOW with every other copy in
+`alternates`, so nothing is guessed.
+
+## D-015 Two-pass track layout
+
+Pass 1 applies the spec rule to HIGH and MEDIUM clips (the ones placed by default). Pass 2 puts LOW
+clips into the lowest track with a free gap. Without this, ambiguous chorus takes stacked at one
+position pushed placed clips up to 51 tracks on a 200-take set; with it, 21.
+
+## D-016 Helper service
+
+- **Port** 47653 on 127.0.0.1 only (configurable in `%APPDATA%/MusicVideoAutoSync/config.json`).
+- **Token:** 32 random bytes in `%APPDATA%/MusicVideoAutoSync/token`, created by the installer
+  (`autosync-helper init-token`), required in `X-AutoSync-Token` on every request. The Host header
+  must be 127.0.0.1 or localhost (blocks DNS-rebinding from a browser page).
+- **Jobs:** one at a time, state in `<cache>/jobs/<id>/job.json`; a job found "running" at start-up is
+  marked `interrupted` and can be resumed; finished clips come back from the per-clip cache
+  (`tests/helper/test_resume.py` kills the helper with SIGKILL mid-job and resumes).
+- **Self-test endpoint:** generates synthetic takes with known truth on the client's machine and
+  analyses them, so the whole pipeline can be smoke-tested without the client's footage.
+
+## D-017 FCP7 XML: hand-written xmeml, not the OpenTimelineIO adapter
+
+- **Options:** OpenTimelineIO + otio-fcp-adapter (Apache-2.0); hand-written xmeml.
+- **Evidence:** the writer needs exact control of sequence-frame units for mixed rates,
+  `file://localhost/D%3a/...` paths and per-clip links (docs/PREMIERE_API_NOTES.md item 12); OTIO
+  would add two runtime dependencies to the installer for ~200 lines of output. OTIO's FCP7 reader is
+  used in the tests as an independent parser: it reads our XML and sees every clip on the expected
+  track at the expected frame (`tests/export/test_fcp7_xml.py`).
+- **Not verified:** Premiere's own import of the file. The panel's placement self-test checks it by
+  readback on the client's machine.
