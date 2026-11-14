@@ -21,6 +21,13 @@ It is signal processing (MFCC cross-correlation + GCC-PHAT), not machine learnin
 `sync_result.json` (schema in `schema/`) is the single source of truth. Only the engine writes
 sync positions; manual corrections live in each clip's `override`.
 
+## Install
+
+- **Windows:** the installer from the GitHub Release, then `docs/CLIENT_SMOKE_TEST.md`.
+- **Mac:** clone this repository and follow `docs/MAC_GUIDE.md` (`./scripts/setup_mac.sh`,
+  `./scripts/setup_mac_https.sh`, `./scripts/start_helper_mac.sh`). Includes a command-line route
+  that needs no panel.
+
 ## Engine quick start (no Premiere needed)
 
 ```bash
@@ -52,5 +59,5 @@ Tests: `.venv/bin/python -m pytest` (FFmpeg required for the end-to-end tests).
 
 ## Docs
 
-`docs/CLIENT_SMOKE_TEST.md` (start here) · `docs/INSTALL.md` · `docs/USER_GUIDE.md` ·
+`docs/CLIENT_SMOKE_TEST.md` (Windows, start here) · `docs/MAC_GUIDE.md` (Mac) · `docs/INSTALL.md` · `docs/USER_GUIDE.md` ·
 `docs/LIMITATIONS.md` · `docs/DECISIONS.md` · `docs/LICENSES.md` · `docs/PREMIERE_API_NOTES.md`

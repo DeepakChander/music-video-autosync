@@ -37,9 +37,17 @@ What the product cannot do, or has not proven yet, and the working alternative f
 | Very live rooms (direct sound much quieter than the echo, below about -15 dB) | The sample-level pass can lock onto a reflection (up to ~15 ms late) | Nudge by a frame if needed |
 | Slow-motion takes (2x playback) | Detected and placed at their start at native speed; the engine never conforms footage. Tracks reserve the conformed length | Interpret Footage to the sequence rate in Premiere |
 | Clock drift | Reported per clip (ppm), never corrected; shown as unreliable when the fit is poor | Speed adjust by hand if a long take drifts more than a frame |
-| One master song per sequence; Windows only | - | - |
+| One master song per sequence | - | - |
 | LOW clips are not placed by default | They wait in AutoSync / Needs review | Tick **Also place low-confidence (LOW) clips**, or pick a candidate |
 | The **Frame-rate conversion** setting is disabled | Out of scope for v1 | - |
+
+## macOS (run from source, docs/MAC_GUIDE.md)
+
+| Limit | Effect | Working alternative |
+|---|---|---|
+| No Mac installer; no tray app | Clone the repository, run `scripts/setup_mac.sh`, keep `scripts/start_helper_mac.sh` running in a Terminal window | - |
+| Premiere disallows `http://` URLs on macOS (Adobe's Premiere UXP network recipe) | The helper serves HTTPS with a certificate from a local mkcert authority (`scripts/setup_mac_https.sh`); the panel tries http, then https. Whether Premiere accepts that certificate is **not verified** | Plan B: `engine.cli analyze` + `engine.cli report` + `python -m export.fcp7_xml`, then File > Import in Premiere |
+| The panel inside Premiere on a Mac | **Not verified** (no Premiere on the build machine) | The panel's placement self-test checks it on the Mac |
 
 ## Distribution limits
 

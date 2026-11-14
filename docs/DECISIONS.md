@@ -252,3 +252,23 @@ fails the build if any other file requires a relative module.
 - Uninstall stops the helper, removes the panel, and deletes program, token, logs and cache.
 - The release workflow proves install / run / uninstall on a Windows runner (Phase 5 gate); the
   runner is not a pristine machine, so a client install remains the final check.
+
+## D-022 macOS: run from the Git repository
+
+- **Date / by:** 2026-11-14, Deepak asked for a Mac route (a tester clones the repository). This
+  extends D-001 ("Windows only") for run-from-source; the installer stays Windows-only.
+- **Evidence:** Adobe's Premiere UXP "Network Operations" recipe: "macOS restricts `http://` for
+  security reasons. You should use `https://` instead", and its troubleshooting row "Connection
+  fails only on macOS - HTTPS required - Premiere disallows http:// URLs on macOS". An Adobe
+  community bug report (Premiere 25.6.3, macOS 26.1) shows `fetch("http://...")` failing. No source
+  says whether 127.0.0.1 is exempt.
+- **Choice:** the helper serves HTTPS when `config.json` names a certificate; `setup_mac_https.sh`
+  makes one with mkcert (a local authority trusted in the user's keychain, certificate valid for
+  127.0.0.1 and localhost only). The panel tries `http://127.0.0.1`, then `https://127.0.0.1`, then
+  `https://localhost`, and remembers the one that answered, so Windows is unchanged. A no-panel route
+  (`engine.cli report`, `python -m export.fcp7_xml`) gives Mac users a working path regardless.
+- **Verified on macOS:** fresh clone, `setup_mac.sh`, helper over http and over https (certificate
+  verified), helper smoke 7/7, Plan B commands. **Not verified:** Premiere on a Mac accepting the
+  certificate; the panel in Premiere on a Mac.
+- **What would change it:** the tester's step 9 result. If Premiere rejects the local certificate,
+  Plan B becomes the documented Mac route until another transport is proven.

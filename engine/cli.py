@@ -108,7 +108,8 @@ def _cmd_report(a: argparse.Namespace) -> int:
     for c in rows:
         pos = c.override.song_position_ticks if c.override else c.song_position_ticks
         track = c.override.video_track if c.override else c.video_track
-        note = (c.reason.value if c.reason else "") + (f": {c.reason_detail}" if c.reason_detail else "")
+        detail = " / ".join(x.strip() for x in (c.reason_detail or "").splitlines() if x.strip())
+        note = (c.reason.value if c.reason else "") + (f": {detail}" if detail else "")
         if c.rate and c.rate != 1:
             note += f" playback {c.rate:g}x"
         if c.alternates and c.status.value == "LOW":
