@@ -109,9 +109,9 @@ function createView(deps) {
     dot.className = `dot ${c}`;
     txt.textContent = t;
     if (state.helper === "down") {
-      banner("error", "<b>Helper not running.</b> Start <b>Music Video AutoSync Helper</b> from the Windows Start menu (it normally starts with Windows and shows an icon in the tray). Analysis and placement need it; nothing is faked while it is down.");
+      banner("error", "<b>Helper not running.</b> Windows: start <b>Music Video AutoSync Helper</b> from the Start menu (it normally starts with Windows). Mac: in Terminal, in the cloned folder, run <b>./scripts/start_helper_mac.sh</b> and keep that window open. Analysis and placement need the helper; nothing is faked while it is down.");
     } else if (state.helper === "noffmpeg") {
-      banner("warn", "<b>FFmpeg not found by the helper.</b> Reinstall Music Video AutoSync; the installer ships FFmpeg.");
+      banner("warn", "<b>FFmpeg not found by the helper.</b> Windows: reinstall Music Video AutoSync (the installer ships FFmpeg). Mac: run <b>brew install ffmpeg</b>, then restart the helper.");
     } else if (state.helper === "ok" && /Helper not running|FFmpeg not found/.test($("banner").innerHTML)) {
       banner(null);
     }

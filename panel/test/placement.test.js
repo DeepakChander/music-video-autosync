@@ -210,3 +210,12 @@ test("keep scratch audio off: UXP keeps it muted and says so, readback still cle
   assert.ok(r.notes.some((n) => /scratch audio was kept and muted/.test(n)));
   assert.ok(r.mutedTracks.length > 0);
 });
+
+test("helper client finds the token where the helper writes it on macOS", async () => {
+  const files = { "/Users/ed/Library/Application Support/MusicVideoAutoSync/token": "mactok\n" };
+  let sent = null;
+  const api = createApi({ fetch: async (u, init) => { sent = init.headers; return { ok: true, status: 200, text: async () => "{}" }; },
+    fs: { readFile: async (p) => { if (!(p in files)) throw new Error("ENOENT"); return files[p]; } }, os: { homedir: () => "/Users/ed" } });
+  await api.health();
+  assert.strictEqual(sent["X-AutoSync-Token"], "mactok");
+});

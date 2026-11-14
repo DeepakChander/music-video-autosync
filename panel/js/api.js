@@ -26,21 +26,33 @@ function createApi(deps) {
   const base = `http://127.0.0.1:${port}`;
   let token = deps.token || null;
 
-  // The installer's token file wins (a reinstall writes a new one); a pasted token is the fallback.
+  // Where the helper writes the token (helper/config.py app_data_dir) on Windows, macOS, Linux.
+  function tokenPaths(home) {
+    return [
+      `${home}/AppData/Roaming/MusicVideoAutoSync/token`,
+      `${home}/Library/Application Support/MusicVideoAutoSync/token`,
+      `${home}/.config/MusicVideoAutoSync/token`,
+    ];
+  }
+
+  // The helper's token file wins (a reinstall writes a new one); a pasted token is the fallback.
   async function loadToken() {
     if (token) return token;
-    let path = null;
+    let tried = [];
     if (deps.fs && deps.os) {
       const home = String(deps.os.homedir()).replace(/\\/g, "/");
-      path = `${home}/AppData/Roaming/MusicVideoAutoSync/token`;
-      try {
-        const t = String(await deps.fs.readFile(path, { encoding: "utf-8" })).trim();
-        if (t) { token = t; return token; }
-      } catch (e) { /* fall back to a pasted token */ }
+      tried = tokenPaths(home);
+      for (const path of tried) {
+        try {
+          const t = String(await deps.fs.readFile(path, { encoding: "utf-8" })).trim();
+          if (t) { token = t; return token; }
+        } catch (e) { /* try the next location, then a pasted token */ }
+      }
     }
     const saved = deps.storage ? deps.storage.getItem("autosync.token") : null;
     if (saved) { token = saved; return token; }
-    throw new HelperError("TOKEN_NOT_FOUND", `Pairing token not found${path ? ` at ${path}` : ""}. Paste it from the helper's tray menu (Copy pairing token).`, 0);
+    throw new HelperError("TOKEN_NOT_FOUND", `Pairing token not found${tried.length ? ` (looked in ${tried.join(", ")})` : ""}. ` +
+      "Paste it into the panel: Windows tray menu > Copy pairing token, or on a Mac run: .venv/bin/python -m helper print-token", 0);
   }
 
   function setToken(t) {
