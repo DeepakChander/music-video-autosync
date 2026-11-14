@@ -69,6 +69,14 @@ class HelperConfig:
     port: int = DEFAULT_PORT
     cache_dir: str = ""
     workers: int | None = None
+    # HTTPS on 127.0.0.1: Premiere disallows http:// URLs on macOS (Adobe's Premiere UXP network
+    # recipe). scripts/setup_mac_https.sh writes a locally trusted certificate and these two paths.
+    tls_cert: str | None = None
+    tls_key: str | None = None
+
+    @property
+    def scheme(self) -> str:
+        return "https" if self.tls_cert and self.tls_key else "http"
 
     @classmethod
     def load(cls) -> "HelperConfig":
@@ -80,6 +88,8 @@ class HelperConfig:
             cfg.port = int(data.get("port", cfg.port))
             cfg.cache_dir = data.get("cache_dir") or cfg.cache_dir
             cfg.workers = data.get("workers")
+            cfg.tls_cert = data.get("tls_cert") or None
+            cfg.tls_key = data.get("tls_key") or None
         if os.environ.get("AUTOSYNC_PORT"):
             cfg.port = int(os.environ["AUTOSYNC_PORT"])
         return cfg

@@ -23,7 +23,11 @@ class HelperError extends Error {
 function createApi(deps) {
   const fetchFn = deps.fetch;
   const port = deps.port || DEFAULT_PORT;
-  const base = `http://127.0.0.1:${port}`;
+  // Windows: plain http to 127.0.0.1. macOS: Premiere disallows http:// URLs (Adobe's Premiere
+  // UXP network recipe), so the Mac helper can serve https with a locally trusted certificate
+  // (scripts/setup_mac_https.sh). The first base that answers is remembered.
+  const bases = deps.bases || [`http://127.0.0.1:${port}`, `https://127.0.0.1:${port}`, `https://localhost:${port}`];
+  let base = bases[0];
   let token = deps.token || null;
 
   // Where the helper writes the token (helper/config.py app_data_dir) on Windows, macOS, Linux.
@@ -65,16 +69,23 @@ function createApi(deps) {
 
   async function call(method, path, body) {
     const tok = await loadToken();
-    let res;
-    try {
-      res = await fetchFn(base + path, {
-        method,
-        headers: { [TOKEN_HEADER]: tok, "Content-Type": "application/json" },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
-    } catch (e) {
-      throw new HelperError("HELPER_DOWN", `Helper not running on ${base} (${e && e.message ? e.message : e})`, 0);
+    const init = {
+      method,
+      headers: { [TOKEN_HEADER]: tok, "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    };
+    let res = null;
+    const errors = [];
+    for (const b of [base, ...bases.filter((x) => x !== base)]) {
+      try {
+        res = await fetchFn(b + path, init);
+        base = b;
+        break;
+      } catch (e) {
+        errors.push(`${b}: ${e && e.message ? e.message : e}`);
+      }
     }
+    if (!res) throw new HelperError("HELPER_DOWN", `Helper not reachable (${errors.join("; ")})`, 0);
     let data = null;
     const text = await res.text();
     try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { error: { code: "BAD_RESPONSE", message: text.slice(0, 200) } }; }
@@ -87,7 +98,7 @@ function createApi(deps) {
   }
 
   return {
-    base,
+    get base() { return base; },
     loadToken,
     setToken,
     health: () => call("GET", "/health"),

@@ -50,8 +50,14 @@ def build_server(cfg: HelperConfig):
     token = ensure_token()
     app = create_app(token, cfg.cache_dir, cfg.workers)
     # 127.0.0.1 only: the helper is never reachable from another machine.
+    tls = {}
+    if cfg.scheme == "https":
+        for path in (cfg.tls_cert, cfg.tls_key):
+            if not os.path.isfile(path):
+                raise SystemExit(f"TLS file missing: {path} (run scripts/setup_mac_https.sh again or remove tls_* from config.json)")
+        tls = {"ssl_certfile": cfg.tls_cert, "ssl_keyfile": cfg.tls_key}
     config = uvicorn.Config(app, host="127.0.0.1", port=cfg.port, log_level="info", access_log=False,
-                            log_config=None)
+                            log_config=None, **tls)
     return uvicorn.Server(config)
 
 
@@ -59,7 +65,7 @@ def cmd_serve(cfg: HelperConfig) -> int:
     if not port_free(cfg.port):
         logging.error("port %s is already in use (is the helper already running?)", cfg.port)
         return 3
-    logging.info("helper listening on http://127.0.0.1:%s, cache %s", cfg.port, cfg.cache_dir)
+    logging.info("helper listening on %s://127.0.0.1:%s, cache %s", cfg.scheme, cfg.port, cfg.cache_dir)
     build_server(cfg).run()
     return 0
 

@@ -13,13 +13,29 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import ssl
+import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from helper.config import DEFAULT_PORT, TOKEN_HEADER, token_path  # noqa: E402
+from helper.config import DEFAULT_PORT, TOKEN_HEADER, HelperConfig, token_path  # noqa: E402
+
+SSL_CONTEXT = None
+
+
+def https_context(cafile):
+    """Verify the helper's certificate. mkcert's root lives in `mkcert -CAROOT`; Python does not
+    read the macOS keychain, so it is passed explicitly."""
+    if not cafile:
+        try:
+            root = subprocess.run(["mkcert", "-CAROOT"], capture_output=True, text=True, check=True).stdout.strip()
+            cafile = os.path.join(root, "rootCA.pem")
+        except (OSError, subprocess.CalledProcessError):
+            cafile = None
+    return ssl.create_default_context(cafile=cafile) if cafile else ssl.create_default_context()
 
 
 def call(url: str, token: str, method: str = "GET", body=None, timeout: float = 600):
@@ -27,7 +43,7 @@ def call(url: str, token: str, method: str = "GET", body=None, timeout: float = 
     req = urllib.request.Request(url, data=data, method=method,
                                  headers={TOKEN_HEADER: token, "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as r:
             return r.status, json.loads(r.read() or b"{}")
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read() or b"{}")
@@ -41,8 +57,15 @@ def main(argv=None) -> int:
     p.add_argument("--clips", nargs="*", default=[])
     p.add_argument("--count", type=int, default=24, help="self-test takes to generate")
     p.add_argument("--fps", default="24000/1001")
+    p.add_argument("--wait", type=float, default=30.0, help="seconds to wait for the helper to come up")
+    p.add_argument("--https", action="store_true", help="talk https (default: whatever the helper config says)")
+    p.add_argument("--cafile", help="CA file to verify the helper's certificate (default: mkcert's root)")
     a = p.parse_args(argv)
-    base = f"http://127.0.0.1:{a.port}"
+    global SSL_CONTEXT
+    scheme = "https" if (a.https or HelperConfig.load().scheme == "https") else "http"
+    if scheme == "https":
+        SSL_CONTEXT = https_context(a.cafile)
+    base = f"{scheme}://127.0.0.1:{a.port}"
     results: list[tuple[str, bool, str]] = []
 
     def check(name, ok, detail=""):
@@ -55,11 +78,17 @@ def main(argv=None) -> int:
     except OSError as e:
         check("token file readable", False, str(e))
         return 1
-    try:
-        st, h = call(base + "/health", token, timeout=5)
-    except (urllib.error.URLError, OSError) as e:
-        check("helper reachable", False, f"{base}: {e}")
-        return 1
+    # A helper started a moment ago may still be loading (first start compiles its Python files).
+    deadline = time.time() + a.wait
+    while True:
+        try:
+            st, h = call(base + "/health", token, timeout=5)
+            break
+        except (urllib.error.URLError, OSError) as e:
+            if time.time() >= deadline:
+                check("helper reachable", False, f"{base}: {e} (is the helper running?)")
+                return 1
+            time.sleep(1)
     check("health", st == 200 and h.get("ffmpeg_found"), f"version={h.get('version')} ffmpeg={h.get('ffmpeg')}")
     st, _ = call(base + "/health", "wrong-token", timeout=5)
     check("wrong token rejected", st == 401, f"status={st}")

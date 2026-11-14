@@ -236,3 +236,37 @@ def sequence_name(song_path: str, when: Optional[str] = None) -> str:
     song = os.path.splitext(os.path.basename(song_path.replace("\\", "/")))[0]
     ts = when or _dt.datetime.now().strftime("%Y-%m-%d %H%M%S")
     return f"AutoSync - {song} - {ts}"
+
+
+def main(argv=None) -> int:
+    """python -m export.fcp7_xml --result sync_result.json --out draft.xml
+
+    Command-line route to a Premiere sequence without the panel (File > Import the .xml).
+    Places HIGH, MEDIUM and overridden clips (and LOW with --place-low)."""
+    import argparse
+    import sys
+
+    from engine.result import load_result
+
+    p = argparse.ArgumentParser(prog="python -m export.fcp7_xml", description=main.__doc__)
+    p.add_argument("--result", required=True, help="sync_result.json written by the engine")
+    p.add_argument("--out", required=True, help="the .xml file to write")
+    p.add_argument("--name", help="sequence name (default: AutoSync - <song> - <date time>)")
+    p.add_argument("--place-low", action="store_true", help="also place LOW clips")
+    p.add_argument("--no-scratch", action="store_true", help="leave the camera audio out")
+    a = p.parse_args(argv)
+    res = load_result(a.result)
+    name = a.name or sequence_name(res.master.path)
+    try:
+        info = write_xml(res, a.out, XmlOptions(sequence_name=name, keep_scratch_audio=not a.no_scratch,
+                                                place_low=a.place_low))
+    except ExportError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    print(f"Wrote {info['path']}: sequence '{name}', {info['clips_placed']} clips on {info['video_tracks']} video tracks"
+          + ("" if a.no_scratch else f", camera audio on A2-A{info['scratch_audio_tracks'] + 1} (mute them in Premiere)"))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

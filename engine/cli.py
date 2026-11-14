@@ -84,6 +84,43 @@ def _cmd_schema(a: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_report(a: argparse.Namespace) -> int:
+    """Readable list of every clip: status, reason, song position (timecode), track, evidence."""
+    from fractions import Fraction
+
+    from .result import load_result
+    from .timebase import TICKS_PER_SECOND
+
+    res = load_result(a.result)
+    fps = Fraction(res.sequence.fps_num, res.sequence.fps_den)
+    base = round(float(fps))
+
+    def tc(ticks):
+        if ticks is None:
+            return "-"
+        frames = int(round(Fraction(int(ticks), TICKS_PER_SECOND) * fps))
+        s, f = divmod(frames, base)
+        return f"{s // 3600:02d}:{s // 60 % 60:02d}:{s % 60:02d}:{f:02d}"
+
+    order = {"UNSYNCED": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3}
+    rows = sorted(res.clips, key=lambda c: (order[c.status.value], c.name))
+    print(f"{'clip':32} {'status':9} {'position':12} {'track':5} {'score':6} {'ratio':6}  reason / note")
+    for c in rows:
+        pos = c.override.song_position_ticks if c.override else c.song_position_ticks
+        track = c.override.video_track if c.override else c.video_track
+        note = (c.reason.value if c.reason else "") + (f": {c.reason_detail}" if c.reason_detail else "")
+        if c.rate and c.rate != 1:
+            note += f" playback {c.rate:g}x"
+        if c.alternates and c.status.value == "LOW":
+            note += " alternates " + ", ".join(tc(int(round(max(0.0, x.song_position_s) * TICKS_PER_SECOND))) for x in c.alternates[:3])
+        print(f"{c.name[:32]:32} {c.status.value:9} {tc(pos):12} {('V%d' % track) if track else '-':5} "
+              f"{c.confidence.score:<6.3f} {c.confidence.peak_ratio:<6.2f}  {note.strip()}")
+    sm = res.summary
+    print(f"\n{sm.total} clips: {sm.HIGH} HIGH, {sm.MEDIUM} MEDIUM, {sm.LOW} LOW, {sm.UNSYNCED} UNSYNCED; "
+          f"{sm.video_tracks} video tracks for HIGH/MEDIUM")
+    return 0
+
+
 def _cmd_doctor(_a: argparse.Namespace) -> int:
     out = {"engine_version": __version__}
     for tool in ("ffmpeg", "ffprobe"):
@@ -120,6 +157,10 @@ def build_parser() -> argparse.ArgumentParser:
     sc = sub.add_parser("schema", help="write the JSON Schema of sync_result.json")
     sc.add_argument("--out")
     sc.set_defaults(func=_cmd_schema)
+
+    rp = sub.add_parser("report", help="print every clip's status, position and reason")
+    rp.add_argument("--result", required=True)
+    rp.set_defaults(func=_cmd_report)
 
     dr = sub.add_parser("doctor", help="check that FFmpeg is available")
     dr.set_defaults(func=_cmd_doctor)

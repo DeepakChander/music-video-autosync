@@ -219,3 +219,20 @@ test("helper client finds the token where the helper writes it on macOS", async 
   await api.health();
   assert.strictEqual(sent["X-AutoSync-Token"], "mactok");
 });
+
+test("helper client falls back to https when http is refused (macOS) and remembers it", async () => {
+  const seen = [];
+  const fetchFn = async (url) => {
+    seen.push(url);
+    if (url.startsWith("http://")) throw new TypeError("Network request failed");
+    return { ok: true, status: 200, text: async () => '{"status":"ok"}' };
+  };
+  const api = createApi({ token: "t", fetch: fetchFn });
+  assert.deepStrictEqual(await api.health(), { status: "ok" });
+  assert.strictEqual(api.base, "https://127.0.0.1:47653");
+  seen.length = 0;
+  await api.health();
+  assert.deepStrictEqual(seen, ["https://127.0.0.1:47653/health"], "the working base is used first next time");
+  const down = createApi({ token: "t", fetch: async () => { throw new TypeError("refused"); } });
+  await assert.rejects(down.health(), (e) => e.code === "HELPER_DOWN" && /https:\/\/localhost/.test(e.message));
+});
