@@ -136,17 +136,43 @@ function createPremiere(ppro, core, log) {
     return seq;
   }
 
+  /*
+   * Bins are looked up fresh, by name from the project root, right before every use. A FolderItem
+   * kept from before an import or a new sequence can be invalid afterwards: Premiere 26.x then
+   * throws "The script object is no longer valid." (client run, 15 Nov 2026; same report on the CC
+   * developer forum, thread 11935, createMoveItemAction after sequences were added).
+   */
+  async function binAt(project, names) {
+    let cur = await project.getRootItem();
+    for (const n of names) cur = await ensureBin(project, cur, n);
+    return cur;
+  }
+
+  // `bin` is a FolderItem or an async function returning a fresh one (preferred).
   // sequence.getProjectItem(): Promise<ProjectItem>; FolderItem.createMoveItemAction(item, newParent)
   async function moveToBin(project, projectItem, bin) {
+    const target = typeof bin === "function" ? await bin() : bin;
     const pi = ppro.ProjectItem.cast(projectItem) || projectItem;
     const parent = pi.getParentBin();
-    if (parent && parent.getId && parent.getId() === bin.getId()) return;
-    txn(project, "AutoSync: organise bin", () => [parent.createMoveItemAction(pi, bin)]);
+    if (parent && parent.getId && parent.getId() === target.getId()) return;
+    txn(project, "AutoSync: organise bin", () => [parent.createMoveItemAction(pi, target)]);
   }
 
   async function moveSequenceToBin(project, seq, bin) {
     if (typeof seq.getProjectItem !== "function") return;
     await moveToBin(project, await seq.getProjectItem(), bin);
+  }
+
+  // Run one placement step; a failure says which step it was.
+  async function step(label, fn) {
+    try {
+      return await fn();
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      const err = e instanceof UserError ? new UserError(`${label}: ${msg}`) : new Error(`${label}: ${msg}`);
+      err.cause = e;
+      throw err;
+    }
   }
 
   /*
@@ -266,7 +292,7 @@ function createPremiere(ppro, core, log) {
   }
 
   return {
-    UserError, activeProject, txn, idOf, findBin, ensureBin, walkClips, importAndMap, createSequence,
+    UserError, activeProject, txn, idOf, findBin, ensureBin, binAt, step, walkClips, importAndMap, createSequence,
     moveToBin, moveSequenceToBin, mediaTypeFor, readMarks, setMarks, readTrack, observe, muteScratch,
     openSequence, findSequence, selectedMediaPaths,
   };

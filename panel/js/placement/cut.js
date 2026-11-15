@@ -101,8 +101,8 @@ function createCutPlacer(ppro, core, pr, uxpAdapter) {
 
     const seqPlan = { sequenceName: payload.sequenceName, fpsNum: payload.fpsNum, fpsDen: payload.fpsDen, ticksPerFrame: tpf,
       width: payload.width, height: payload.height };
-    const seq = await pr.createSequence(project, seqPlan);
-    await pr.moveSequenceToBin(project, seq, bin);
+    const seq = await pr.step("Creating the sequence", () => pr.createSequence(project, seqPlan));
+    await pr.step("Moving the sequence into its bin", () => pr.moveSequenceToBin(project, seq, () => pr.binAt(project, ["AutoSync"])));
     const editor = ppro.SequenceEditor.getEditor(seq);
     let far = 0n;
     for (const x of [...payload.video, ...payload.audio]) far = far > BigInt(x.startTicks) + BigInt(x.outTicks) ? far : BigInt(x.startTicks) + BigInt(x.outTicks);

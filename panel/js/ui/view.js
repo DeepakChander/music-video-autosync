@@ -134,7 +134,7 @@ function createView(deps) {
       banner(null);
     }
     const h = state.health;
-    $("about").innerHTML = `Panel 0.5.0 · Premiere ${esc(hostVersion || "?")}` +
+    $("about").innerHTML = `Panel 0.5.1 · Premiere ${esc(hostVersion || "?")}` +
       (h ? ` · Helper ${esc(h.version)} · Engine ${esc(h.engine_version)}<br>Cache: ${esc(h.cache_dir)}` : "");
   }
 

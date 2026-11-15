@@ -25,16 +25,17 @@ function createXmlAdapter(ppro, core, pr, common, api) {
       const got = BigInt(Math.round(Number(settings.getVideoFrameRate().ticksPerFrame)));
       if (got !== plan.ticksPerFrame) report.mismatches.push({ name: "sequence", kind: "frame_rate", expected: String(plan.ticksPerFrame), actual: String(got) });
     }
-    const imp = await pr.importAndMap(project, [plan.master.path, ...plan.items.map((i) => i.path)], bins.runBin);
+    const imp = await pr.step("Importing the media", async () =>
+      pr.importAndMap(project, [plan.master.path, ...plan.items.map((i) => i.path)], await bins.get("runBin")));
     const masterClip = imp.map.get(core.normPath(plan.master.path));
     const idByClip = new Map();
     for (const it of plan.items) {
       const c = imp.map.get(core.normPath(it.path));
       if (c) idByClip.set(it.clipId, pr.idOf(c));
     }
-    report.mutedTracks = await pr.muteScratch(seq, plan);
-    report.binned = await common.binLeftovers(project, plan, bins);
-    const rb = await common.verify(seq, p, idByClip, masterClip ? pr.idOf(masterClip) : null);
+    report.mutedTracks = await pr.step("Muting the camera sound", () => pr.muteScratch(seq, plan));
+    report.binned = await pr.step("Putting unplaced clips in their bins", () => common.binLeftovers(project, plan, bins));
+    const rb = await pr.step("Reading the timeline back", () => common.verify(seq, p, idByClip, masterClip ? pr.idOf(masterClip) : null));
     report.mismatches = report.mismatches.concat(rb.mismatches);
     report.placed = plan.items.length - rb.mismatches.filter((m) => m.kind === "video_missing" || m.kind === "not_in_project").length;
     await pr.openSequence(project, seq, 0n);
@@ -52,7 +53,7 @@ function createXmlAdapter(ppro, core, pr, common, api) {
     const report = { adapter: "xml", sequenceName: plan.sequenceName, planned: plan.items.length, placed: 0,
       errors: plan.errors.map((e) => Object.assign({}, e)), mismatches: [], notes: [], timings: {} };
     const project = await pr.activeProject();
-    const bins = await common.prepareBins(project, plan);
+    const bins = await pr.step("Creating the AutoSync bins", () => common.prepareBins(project, plan));
     o.onProgress({ phase: "writing XML", done: 0, total: plan.items.length });
     const x = await api.exportXml(o.jobId, { sequence_name: plan.sequenceName, keep_scratch_audio: plan.scratchTracks > 0, place_low: plan.placeLow });
     report.xmlPath = x.path;
@@ -61,7 +62,8 @@ function createXmlAdapter(ppro, core, pr, common, api) {
     const tImport = Date.now();
     let ok = false;
     try {
-      ok = await project.importFiles([x.path], true, ppro.ProjectItem.cast(bins.runBin) || bins.runBin, false);
+      const runBin = await bins.get("runBin");
+      ok = await project.importFiles([x.path], true, ppro.ProjectItem.cast(runBin) || runBin, false);
     } catch (e) {
       report.notes.push(`importFiles threw: ${e && e.message ? e.message : e}`);
     }

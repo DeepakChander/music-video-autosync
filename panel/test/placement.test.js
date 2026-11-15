@@ -384,3 +384,34 @@ test("direct placement without a marker or transition API says so instead of fai
   assert.ok(rep.ok);
   assert.ok(rep.notes.some((n) => /no marker API/.test(n)) && rep.notes.some((n) => /no transition API/.test(n)));
 });
+
+
+test("stale bins: every placement route looks bins up fresh (Premiere 26.x: script object no longer valid)", async () => {
+  // The fake proves the knob bites: a bin kept across an import is refused.
+  {
+    const { fake, pr } = setup({ staleHandles: true });
+    const root = await fake.project.getRootItem();
+    const bin = await pr.ensureBin(fake.project, root, "AutoSync");
+    await fake.project.importFiles([RESULT.clips[0].path], true, null, false);
+    await assert.rejects(fake.project.importFiles([RESULT.clips[1].path], true, bin, false), /no longer valid/);
+  }
+  // UXP direct draft
+  {
+    const { pr, uxp } = setup({ staleHandles: true });
+    const rep = await uxp.place(plan());
+    assert.ok(rep.ok, JSON.stringify(rep.errors.concat(rep.mismatches)).slice(0, 400));
+  }
+  // XML draft
+  {
+    const { xml } = setup({ staleHandles: true, xmlImport: "creates" });
+    const rep = await xml.place(plan(), { jobId: "J1" });
+    assert.strictEqual(rep.errors.length, 0, JSON.stringify(rep.errors));
+  }
+  // First cut placed directly
+  {
+    const { fake, pr, uxp } = setup({ staleHandles: true, xmlImport: "none" });
+    const payload = JSON.parse(fs.readFileSync(path.join(FIX, "cut_uxp.json"), "utf8"));
+    const rep = await createCutPlacer(fake.ppro, core, pr, uxp).place(payload);
+    assert.ok(rep.ok, JSON.stringify(rep.errors).slice(0, 400));
+  }
+});

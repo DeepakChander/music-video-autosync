@@ -4,26 +4,25 @@
 
 function createCommon(ppro, core, pr) {
   // Bins: AutoSync / <run>, AutoSync / Unsynced, AutoSync / Needs review (spec section 7).
+  // Created here; every later use calls bins.get(key) for a fresh FolderItem (premiere.js binAt).
   async function prepareBins(project, plan) {
-    const root = await project.getRootItem();
-    const autosync = await pr.ensureBin(project, root, "AutoSync");
-    const runBin = await pr.ensureBin(project, autosync, plan.sequenceName);
-    const unsyncedBin = await pr.ensureBin(project, autosync, "Unsynced");
-    const reviewBin = await pr.ensureBin(project, autosync, "Needs review");
-    return { autosync, runBin, unsyncedBin, reviewBin };
+    const paths = { autosync: ["AutoSync"], runBin: ["AutoSync", plan.sequenceName],
+      unsyncedBin: ["AutoSync", "Unsynced"], reviewBin: ["AutoSync", "Needs review"] };
+    for (const k of Object.keys(paths)) await pr.binAt(project, paths[k]);
+    return { paths, get: (key) => pr.binAt(project, paths[key]) };
   }
 
   // UNSYNCED clips go to AutoSync / Unsynced; LOW clips that were not placed go to
   // AutoSync / Needs review. Files Premiere cannot import (e.g. corrupt) are listed, not hidden.
   async function binLeftovers(project, plan, bins) {
     const out = { unsynced: 0, review: 0, notImported: [] };
-    for (const [list, bin, key] of [[plan.unsynced, bins.unsyncedBin, "unsynced"], [plan.review, bins.reviewBin, "review"]]) {
+    for (const [list, binKey, key] of [[plan.unsynced, "unsyncedBin", "unsynced"], [plan.review, "reviewBin", "review"]]) {
       if (!list.length) continue;
-      const imp = await pr.importAndMap(project, list.map((c) => c.path), bin);
+      const imp = await pr.importAndMap(project, list.map((c) => c.path), await bins.get(binKey));
       for (const c of list) {
         const clip = imp.map.get(core.normPath(c.path));
         if (!clip) { out.notImported.push(c.name); continue; }
-        await pr.moveToBin(project, clip, bin);
+        await pr.moveToBin(project, clip, () => bins.get(binKey));
         out[key] += 1;
       }
     }

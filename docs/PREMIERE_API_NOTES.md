@@ -723,3 +723,18 @@ const movedOk = ppro.ProjectItem.cast(parentNow).getId() === ppro.ProjectItem.ca
 | 13.4 naming / identity | VERIFIED. `===` semantics: NOT FOUND |
 | 13.5 timers, os, fs, openPath | VERIFIED. `launchProcess` exact shape: inconsistent between doc pages. |
 | 13.6 sequence project item | VERIFIED. Default bin and `createSequenceFromMedia` targetBin effect: NOT FOUND |
+
+## Stale object handles ("The script object is no longer valid.")
+
+- Client run, 15 Nov 2026 (Premiere on macOS): "Generate first draft failed. The script object is no
+  longer valid." during the UXP draft.
+- SECONDARY: CC developer forum thread 11935 ("createMoveItemAction fails with Error: The script object is
+  no longer valid"): a FolderItem cached before sequences were added to the project, then used as the
+  move target. Adobe staff's answer there also requires `lockedAccess`/`executeTransaction` callbacks
+  to be synchronous (ours are: `premiere.js` txn).
+- Rule applied: FolderItems are looked up fresh by name from the root right before each use
+  (`premiere.js` binAt, `common.js` bins.get); the simulated Premiere (`staleHandles` knob) makes a
+  FolderItem kept across an import or a new sequence throw this error, and the previous code fails
+  with it while the current code passes (`panel/test/placement.test.js`).
+- Each placement step now names itself in an error ("Moving the sequence into its bin: ...").
+

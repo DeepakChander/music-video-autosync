@@ -22,7 +22,10 @@ function createFake(knobs) {
     shiftClipIndex: -1,
     unimportable: new Set(),
     mediaInfo: new Map(),           // path -> { durationTicks, hasVideo, hasAudio }
+    staleHandles: false,            // a FolderItem kept across an import or a new sequence throws
+                                    // "The script object is no longer valid." (seen on Premiere 26.x)
   }, knobs || {});
+  let epoch = 0; // bumped by importFiles and createSequence when staleHandles is on
 
   let inLock = false;
   const log = [];
@@ -53,8 +56,23 @@ function createFake(knobs) {
     constructor(name) { this.name = name; this._id = newId("pi"); this._parent = null; }
     getId() { return this._id; }
     getParentBin() { return this._parent; }
-    static cast(x) { return x instanceof ProjectItem ? x : null; }
+    static cast(x) { return x instanceof ProjectItem || x instanceof FolderHandle ? x : null; }
   }
+
+  // A FolderItem as the panel holds it. With staleHandles on it dies when the project changes.
+  class FolderHandle {
+    constructor(f) { this._f = f; this._epoch = epoch; this.name = f.name; }
+    _live() {
+      if (k.staleHandles && this._epoch !== epoch) throw new Error("The script object is no longer valid.");
+      return this._f;
+    }
+    async getItems() { return this._live().getItems(); }
+    createBinAction(n, u) { return this._live().createBinAction(n, u); }
+    createMoveItemAction(item, np) { return this._live().createMoveItemAction(item instanceof FolderHandle ? item._live() : item, np); }
+    getId() { return this._live().getId(); }
+    getParentBin() { return this._live().getParentBin(); }
+  }
+  const liveFolder = (x) => (x instanceof FolderHandle ? x._live() : x);
 
   class FolderItem extends ProjectItem {
     constructor(name) { super(name); this.children = []; }
@@ -65,14 +83,19 @@ function createFake(knobs) {
     }
     createMoveItemAction(item, newParent) {
       requireLock("createMoveItemAction");
+      const target = liveFolder(newParent);
       if (item._parent !== this) throw new Error("createMoveItemAction must be called on the current parent");
       return new Action(`move ${item.name}`, () => {
         this.children = this.children.filter((c) => c !== item);
-        newParent.children.push(item);
-        item._parent = newParent;
+        target.children.push(item);
+        item._parent = target;
       });
     }
-    static cast(x) { return x instanceof FolderItem ? x : null; }
+    static cast(x) {
+      if (x instanceof FolderHandle) return x;
+      if (x instanceof FolderItem) return k.staleHandles ? new FolderHandle(x) : x;
+      return null;
+    }
   }
 
   class ClipProjectItem extends ProjectItem {
@@ -326,7 +349,8 @@ function createFake(knobs) {
       return walk(this.root);
     }
     async importFiles(paths, suppressUI, targetBin, stills) {
-      const bin = targetBin || this.root;
+      const bin = targetBin ? liveFolder(targetBin) : this.root;
+      if (k.staleHandles) epoch += 1;
       let all = true;
       for (const p of paths) {
         if (/\.xml$/i.test(p)) {
@@ -346,6 +370,7 @@ function createFake(knobs) {
       return all;
     }
     async createSequence(name) {
+      if (k.staleHandles) epoch += 1;
       const s = new Sequence(name, this);
       this.sequences.push(s);
       s.pi._parent = this.root;
