@@ -147,6 +147,13 @@ Work on a copy of your project (File > Save As...). Then, in the panel, from top
 6. **Review**: fix takes with **Use ...** (alternate positions), **-1f / +1f**, or type a
    timecode and click **Set**.
 
+7. **First cut (edit)**: choose a **Style** (Performance, Performance + story, Hype, Ballad), a
+   **Pace** and **Effects**, then **MAKE FIRST CUT**. A new sequence "AutoSync Cut - ..." opens: the
+   takes are cut on the beat with a marker at every song section, the song on A1. **Another
+   variation** makes a different cut with the same rules; **Render preview video** writes an MP4 of
+   the cut (and adds it to bin AutoSync) that you can watch or send without Premiere. If the panel
+   says Premiere did not import the cut, use File > Import with the .xml path it shows.
+
 | Status | Meaning | On the timeline |
 |---|---|---|
 | HIGH | Strong, clear match | Yes |
@@ -181,6 +188,16 @@ cd ~/Desktop/music-video-autosync
 Then, in Premiere: **File > Import**, choose `AutoSync_draft.xml`, and open the new sequence.
 Mute the camera-audio tracks (A2 and up) with their track headers.
 
+First cut from the command line (an edited sequence plus a preview video):
+
+```bash
+.venv/bin/python -m engine.cli cut --result ~/Desktop/sync_result.json \
+  --style performance --out ~/Desktop/AutoSync_cut.xml --preview ~/Desktop/AutoSync_cut.mp4
+```
+
+`--style` is `performance`, `performance_story`, `hype` or `ballad`; `--pace 1.4` cuts faster,
+`--seed 2` gives another variation. File > Import the .xml as above; the .mp4 plays anywhere.
+
 | Your timeline | `--fps` value |
 |---|---|
 | 23.976 | `24000/1001` |
@@ -212,7 +229,7 @@ If the panel changed, install the new `.ccx` again (step 6).
 | `zsh: command not found: brew` in a new window | Close Terminal and open it again (setup added Homebrew to `~/.zprofile`). The AutoSync scripts find Homebrew either way |
 | `permission denied: ./scripts/...` | `chmod +x scripts/*.sh` |
 | `port 47653 is already in use` | A helper is already running in another Terminal window; use it or close it |
-| The panel does not scroll, or **Use selected project items** ignores a selected bin | That was panel 0.1.0. Update (see "Updating to a newer version") and install the new `.ccx`; the panel's About line shows **Panel 0.1.1** |
+| The panel does not scroll, **Use selected project items** ignores a selected bin, or there is no **First cut** section | An older panel. Update (see "Updating to a newer version") and install the new `.ccx`; the panel's About line shows **Panel 0.2.0** or later |
 | `helper_smoke.py` says the helper is not reachable | Start it first (step 4) and wait for "Application startup complete." |
 | The panel shows red, but the helper runs with `https://` | Premiere may not accept the local certificate. Use Plan B, and send us a screenshot plus the panel's error from UXP Developer Tool > Debug |
 | A take is UNSYNCED / DECODE_ERROR | FFmpeg cannot read its audio (some RAW formats). Place it by hand in Review (type a timecode, click **Set**) |

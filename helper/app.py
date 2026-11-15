@@ -81,6 +81,21 @@ class ReportReq(_Strict):
     report: dict
 
 
+class CutReq(_Strict):
+    style: str = Field("performance", pattern="^(performance|performance_story|hype|ballad)$")
+    pace: float = Field(1.0, gt=0.2, le=4.0)
+    seed: int = 0
+    effects: bool = True
+    story_share: Optional[float] = Field(None, ge=0.0, le=0.8)
+    story_clip_ids: list[str] = Field(default_factory=list)
+    exclude_clip_ids: list[str] = Field(default_factory=list)
+    early_frames: int = Field(0, ge=0, le=6)
+    place_low: bool = False
+    sequence_name: Optional[str] = None
+    preview: bool = False
+    preview_width: int = Field(1280, ge=320, le=3840)
+
+
 def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> FastAPI:
     app = FastAPI(title="Music Video AutoSync helper", version=__version__, docs_url=None, redoc_url=None,
                   openapi_url=None)
@@ -218,6 +233,79 @@ def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> Fas
         except ExportError as e:
             raise JobError("EXPORT_ERROR", str(e), 422) from e
         return {"sequence_name": name, **info}
+
+    previews: dict[str, dict] = {}
+    preview_lock = threading.Lock()
+
+    def _music(job_id: str):
+        from engine.music import music_map_for_file
+        res = jobs.result(job_id)
+        return res, music_map_for_file(res.master.path, EngineSettings(), cache_dir)
+
+    @app.get("/jobs/{job_id}/music")
+    def music(job_id: str):
+        _res, mm = _music(job_id)
+        return mm.model_dump(mode="json")
+
+    @app.post("/jobs/{job_id}/cut")
+    def make_cut(job_id: str, req: CutReq):
+        """Build the first cut: plan + FCP7 XML in the job folder; optional preview MP4 in the background."""
+        from engine.edit import EditSettings, build_plan, validate_plan
+        from export.edit_xml import cut_sequence_name, write_edit_xml
+        res, mm = _music(job_id)
+        settings = EditSettings(style=req.style, pace=req.pace, seed=req.seed, effects=req.effects,
+                                story_share=req.story_share, story_clip_ids=req.story_clip_ids,
+                                exclude_clip_ids=req.exclude_clip_ids, early_frames=req.early_frames,
+                                place_low=req.place_low)
+        plan = build_plan(res, mm, settings)
+        problems = validate_plan(plan, res, mm)
+        if problems:  # never hand Premiere a cut that breaks a rule
+            raise JobError("CUT_INVALID", "; ".join(problems[:5]), 500)
+        name = req.sequence_name or cut_sequence_name(res.master.path, req.style)
+        safe = "".join(ch if ch.isalnum() or ch in " -_" else "_" for ch in name)
+        folder = jobs.job_dir(job_id)
+        plan_path = os.path.join(folder, safe + ".plan.json")
+        with open(plan_path, "w", encoding="utf-8") as f:
+            f.write(plan.model_dump_json(indent=2))
+        info = write_edit_xml(res, plan, os.path.join(folder, safe + ".xml"), name)
+        out = {"sequence_name": name, "xml_path": info["path"], "plan_path": plan_path, "stats": plan.stats,
+               "warnings": plan.warnings, "markers": [m.model_dump() for m in plan.markers],
+               "tempo_bpm": mm.tempo_bpm, "sections": [s.model_dump() for s in mm.sections], "preview": None}
+        if req.preview:
+            from export.preview import render_preview
+            mp4 = os.path.join(folder, safe + ".preview.mp4")
+            key = job_id
+            with preview_lock:
+                if previews.get(key, {}).get("state") == "running":
+                    raise JobError("PREVIEW_BUSY", "A preview is already rendering for this job", 409)
+                previews[key] = {"state": "running", "done": 0, "total": len(plan.shots), "path": mp4, "error": None,
+                                 "sequence_name": name}
+
+            def work():
+                def prog(d, n):
+                    with preview_lock:
+                        previews[key].update(done=d, total=n)
+                try:
+                    render_preview(res, plan, mp4, width=req.preview_width, workers=max(1, (os.cpu_count() or 2) // 2),
+                                   progress=prog)
+                    with preview_lock:
+                        previews[key]["state"] = "done"
+                except Exception as e:  # reported to the panel, never swallowed
+                    with preview_lock:
+                        previews[key].update(state="failed", error=f"{type(e).__name__}: {e}")
+
+            threading.Thread(target=work, daemon=True).start()
+            out["preview"] = dict(previews[key])
+        return out
+
+    @app.get("/jobs/{job_id}/cut/preview")
+    def preview_status(job_id: str):
+        jobs.get(job_id)
+        with preview_lock:
+            st = previews.get(job_id)
+        if st is None:
+            raise JobError("NO_PREVIEW", "No preview has been started for this job", 404)
+        return st
 
     @app.post("/selftest", status_code=201)
     def selftest(req: SelfTestReq):

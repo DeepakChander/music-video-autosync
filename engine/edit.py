@@ -381,7 +381,8 @@ def build_plan(result: SyncResult, music: MusicMap, settings: Optional[EditSetti
                     story_pos[t.clip.clip_id] = pos + length
                     shots.append(Shot(index=len(shots), start=a, end=b, kind="story", clip_id=t.clip.clip_id,
                                       src_in=pos, src_out=pos + length, section=si,
-                                      reason="story slot" if k in story_slots else "no synced take covers this beat"))
+                                      reason=("story slot" if k in story_slots and not is_rest else "no synced take covers this beat")
+                                      + (" coverage cut" if is_rest else "")))
                     st.prev, st.prev_setup = t.clip.clip_id, None
                     continue
             if not cands:

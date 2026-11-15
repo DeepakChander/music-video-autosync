@@ -16,6 +16,7 @@ const { createCommon } = require("./js/placement/common.js");
 const { createUxpAdapter } = require("./js/placement/uxp.js");
 const { createXmlAdapter } = require("./js/placement/xml.js");
 const { createSelfTest } = require("./js/selftest.js");
+const { createFirstCut } = require("./js/firstcut.js");
 const { createView } = require("./js/ui/view.js");
 
 const log = {
@@ -32,8 +33,9 @@ const adapters = {
   xml: createXmlAdapter(ppro, core, pr, common, api),
 };
 const selftest = createSelfTest(core, api, adapters, common, storage);
+const firstcut = createFirstCut(ppro, pr, api);
 const view = createView({
-  doc: document, core, api, pr, adapters, selftest, common, storage,
+  doc: document, core, api, pr, adapters, selftest, common, storage, firstcut,
   lfs: uxp.storage.localFileSystem,
   hostVersion: uxp.host && uxp.host.version,
 });

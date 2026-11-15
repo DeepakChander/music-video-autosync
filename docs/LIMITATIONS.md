@@ -1,4 +1,4 @@
-# Limitations (v0.1.0)
+# Limitations (v0.2.0)
 
 What the product cannot do, or has not proven yet, and the working alternative for each
 (spec rule 4). Nothing here is hidden from the user: each case is reported in the panel.
@@ -48,6 +48,18 @@ What the product cannot do, or has not proven yet, and the working alternative f
 | No Mac installer; no tray app | Clone the repository, run `scripts/setup_mac.sh`, keep `scripts/start_helper_mac.sh` running in a Terminal window | - |
 | Premiere disallows `http://` URLs on macOS (Adobe's Premiere UXP network recipe) | The helper serves HTTPS with a certificate from a local mkcert authority (`scripts/setup_mac_https.sh`); the panel tries http, then https. On a tester's Mac (15 Nov 2026) the panel showed **Helper connected** | Plan B: `engine.cli analyze` + `engine.cli report` + `python -m export.fcp7_xml`, then File > Import in Premiere |
 | Placement by the panel inside Premiere on a Mac | **Not verified yet** (the connection is; placement is not) | The panel's placement self-test checks it on the Mac |
+
+## First cut (edit) limits
+
+| Limit | Effect | Alternative |
+|---|---|---|
+| Song sections are detected automatically (Laplacian segmentation) | On synthetic songs about 80% of section starts land within 3 s, about 56% within 2 beats; published accuracy on real songs is lower | Markers show what was detected; move shots by hand where a section starts elsewhere |
+| Takes are chosen without looking at the picture yet (no face/shot-size/sharpness analysis in 0.2.0) | Choices balance takes and avoid repeats, but cannot prefer the best performance or alternate wide/close | Swap shots in Premiere; shot analysis is the next step (docs/EDIT_DESIGN.md) |
+| Effects travel in the XML: punch-in = Basic Motion scale keyframes, flash = Dip to White, dissolve = Cross Dissolve | Premiere's reading of keyframe times from XML is **not verified** | Effects off, or adjust in Effect Controls |
+| Importing the cut XML through the panel uses the same undocumented `importFiles` route as XML placement | Premiere may not build the sequence automatically | The panel shows the .xml path for File > Import |
+| Slow-motion (2x) takes are used as story footage at native speed | They are not lip-synced in the cut | Conform them in Premiere first (Interpret Footage) |
+| Preview video renders dissolves as cuts | Preview only | The Premiere sequence has the dissolves |
+| No colour matching yet | Takes keep their own look | Lumetri by hand; colour match is planned (docs/EDIT_DESIGN.md) |
 
 ## Distribution limits
 

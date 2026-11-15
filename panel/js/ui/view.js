@@ -11,7 +11,7 @@ const MEDIA_TYPES = ["mov", "mp4", "m4v", "mxf", "avi", "mkv", "mts", "m2ts", "m
 const AUDIO_TYPES = ["wav", "mp3", "aif", "aiff", "flac", "m4a", "aac", "ogg"];
 
 function createView(deps) {
-  const { doc, core, api, pr, adapters, selftest, common, storage, lfs, hostVersion } = deps;
+  const { doc, core, api, pr, adapters, selftest, common, storage, lfs, hostVersion, firstcut } = deps;
   const $ = (id) => doc.getElementById(id);
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -23,24 +23,27 @@ function createView(deps) {
     clipPaths: saved.clipPaths || [], probe: null,
     jobId: saved.jobId || null, job: null, result: null,
     draft: saved.draft || null, lastReport: null,
+    cutSeed: saved.cutSeed || 0, cut: saved.cut || null,
   };
 
   function persist() {
     try {
       storage.setItem("autosync.state", JSON.stringify({ masterPath: state.masterPath, clipPaths: state.clipPaths, jobId: state.jobId,
-        draft: state.draft, settings: settingsSnapshot() }));
+        draft: state.draft, settings: settingsSnapshot(), cutSeed: state.cutSeed, cut: state.cut }));
     } catch (e) { /* non-critical */ }
   }
 
   function settingsSnapshot() {
     return { keepScratch: $("keepScratch").checked, muteScratch: $("muteScratch").checked, placeLow: $("placeLow").checked,
-      rate2: $("rate2").checked, fps: $("fps").value, res: $("res").value, adapter: $("adapter").value };
+      rate2: $("rate2").checked, fps: $("fps").value, res: $("res").value, adapter: $("adapter").value,
+      cutStyle: $("cutStyle").value, cutPace: $("cutPace").value, cutEffects: $("cutEffects").checked };
   }
 
   function restoreSettings() {
     const s = saved.settings || {};
-    for (const k of ["keepScratch", "muteScratch", "placeLow", "rate2"]) if (k in s) $(k).checked = Boolean(s[k]);
-    for (const k of ["fps", "res", "adapter"]) if (s[k]) $(k).value = s[k];
+    for (const k of ["keepScratch", "muteScratch", "placeLow", "rate2", "cutEffects"]) if (k in s) $(k).checked = Boolean(s[k]);
+    for (const k of ["fps", "res", "adapter", "cutStyle", "cutPace"]) if (s[k]) $(k).value = s[k];
+    if (!s.cutPace) $("cutPace").value = "1"; // "Normal", whatever the host does with `selected`
   }
 
   function sequenceSettings() {
@@ -116,7 +119,7 @@ function createView(deps) {
       banner(null);
     }
     const h = state.health;
-    $("about").innerHTML = `Panel 0.1.1 · Premiere ${esc(hostVersion || "?")}` +
+    $("about").innerHTML = `Panel 0.2.0 · Premiere ${esc(hostVersion || "?")}` +
       (h ? ` · Helper ${esc(h.version)} · Engine ${esc(h.engine_version)}<br>Cache: ${esc(h.cache_dir)}` : "");
   }
 
@@ -407,6 +410,58 @@ function createView(deps) {
     });
   }
 
+  // ------------------------------------------------------------------ first cut
+  function cutOptions() {
+    return { style: $("cutStyle").value, pace: Number($("cutPace").value), effects: $("cutEffects").checked,
+      seed: state.cutSeed, place_low: $("placeLow").checked };
+  }
+
+  function renderCut(out) {
+    const el = $("cutOut");
+    if (!out) { el.className = "summary hidden"; el.innerHTML = ""; return; }
+    const st = out.stats || {};
+    const lines = [];
+    if (out.xml_path && out.imported) {
+      lines.push(`<span class="pass">First cut ready.</span> Sequence <b>${esc(out.sequence_name)}</b> is open in the timeline.`);
+    } else if (out.xml_path) {
+      lines.push(`<b>Cut written, but Premiere did not import it automatically.</b> In Premiere choose File &gt; Import and select:<br><span class="pos">${esc(out.xml_path)}</span>`);
+    }
+    if (st.shots != null) lines.push(`${st.shots} shots (${st.performance_shots} performance, ${st.story_shots} story) · mean shot ${st.mean_shot_s} s · ${st.takes_used} takes · tempo ${Number(out.tempo_bpm).toFixed(1)} BPM · variation ${state.cutSeed + 1}`);
+    if (out.sections && out.sections.length) lines.push(`Sections (markers on the sequence): ${out.sections.map((s) => esc(s.kind)).join(" · ")}`);
+    for (const w of out.warnings || []) lines.push(`<span class="fail">Note</span> ${esc(w)}`);
+    for (const n of out.notes || []) lines.push(`<span class="muted">${esc(n)}</span>`);
+    if (out.preview && out.preview.path) lines.push(`Preview video: <span class="pos">${esc(out.preview.path)}</span>${out.preview.imported ? " (also in bin AutoSync)" : ""}`);
+    el.className = `summary ${out.imported || (!out.xml_path && out.preview) ? "ok" : "bad"}`;
+    el.innerHTML = lines.join("<br>");
+  }
+
+  async function makeCut() {
+    if (!state.result) throw new Error("Analyse the clips first.");
+    $("cutOut").className = "summary";
+    $("cutOut").textContent = "Building the first cut…";
+    const out = await firstcut.make(state.jobId, cutOptions());
+    state.cut = { sequence_name: out.sequence_name, xml_path: out.xml_path, sequenceGuid: out.sequenceGuid, imported: out.imported,
+      stats: out.stats, warnings: out.warnings, sections: out.sections, tempo_bpm: out.tempo_bpm, notes: out.notes };
+    persist();
+    renderCut(state.cut);
+  }
+
+  async function cutVariation() {
+    state.cutSeed += 1;
+    await makeCut();
+  }
+
+  async function cutPreview() {
+    if (!state.result) throw new Error("Analyse the clips first.");
+    $("cutOut").className = "summary";
+    $("cutOut").textContent = "Rendering the preview…";
+    const p = await firstcut.preview(state.jobId, cutOptions(), (st) => { $("cutOut").textContent = `Rendering the preview: shot ${st.done}/${st.total}`; });
+    state.cut = Object.assign({}, state.cut || {}, { preview: p });
+    persist();
+    renderCut(state.cut);
+    if (p.note) banner("warn", esc(p.note));
+  }
+
   // ------------------------------------------------------------------ self-test
   function renderSelftest(out) {
     const el = $("selftestOut");
@@ -450,6 +505,7 @@ function createView(deps) {
     $("analyseClips").disabled = b || !helperOk || !state.masterPath || !state.clipPaths.length || polling;
     $("generate").disabled = b || !helperOk || !state.result;
     $("openSequence").disabled = b || !state.draft;
+    for (const id of ["makeCut", "cutVariation", "cutPreview"]) $(id).disabled = b || !helperOk || !state.result;
     $("selftestQuick").disabled = b || !helperOk;
     $("selftestFull").disabled = b || !helperOk;
     const def = storage.getItem("autosync.defaultAdapter");
@@ -478,13 +534,17 @@ function createView(deps) {
     on("generate", "Generate first draft", generate);
     on("openSequence", "Open sequence", openSequence);
     on("verifyImported", "Verify imported sequence", verifyImported);
+    on("makeCut", "Make first cut", makeCut);
+    on("cutVariation", "Another variation", cutVariation);
+    on("cutPreview", "Render preview video", cutPreview);
     on("selftestQuick", "Placement self-test", () => runSelftest(24));
     on("selftestFull", "Placement self-test", () => runSelftest(200));
     on("saveToken", "Save token", async () => { api.setToken($("tokenInput").value); await checkHelper(); });
     $("reviewList").addEventListener("click", onReviewClick);
     $("filter").addEventListener("change", renderReview);
-    for (const id of ["keepScratch", "muteScratch", "placeLow", "rate2", "fps", "res", "adapter"]) $(id).addEventListener("change", () => { persist(); render(); });
+    for (const id of ["keepScratch", "muteScratch", "placeLow", "rate2", "fps", "res", "adapter", "cutStyle", "cutPace", "cutEffects"]) $(id).addEventListener("change", () => { persist(); render(); });
     renderSelftest(selftest.last());
+    renderCut(state.cut);
     render();
     checkHelper().then(async () => {
       if (state.helper === "ok" && state.jobId) {

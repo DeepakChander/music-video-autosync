@@ -10,6 +10,7 @@ const { createPremiere } = require("../js/premiere.js");
 const { createCommon } = require("../js/placement/common.js");
 const { createUxpAdapter } = require("../js/placement/uxp.js");
 const { createXmlAdapter } = require("../js/placement/xml.js");
+const { createFirstCut } = require("../js/firstcut.js");
 const { createFake } = require("./fake-ppro.js");
 
 const FIX = path.join(__dirname, "fixtures");
@@ -261,4 +262,48 @@ test("use selected project items: bins contribute their clips, and the selected 
 
   project.selection = [new ppro.FolderItem("Empty bin")];
   assert.deepStrictEqual(await pr.selectedMediaPaths(project), { paths: [], selected: 1 });
+});
+
+test("first cut: the helper's cut XML is imported and opened; every shot lands where the plan says", async () => {
+  const { fake, pr } = setup({ xmlImport: "creates" });
+  const xmlPath = path.join(FIX, "cut.xml");
+  const api = { cut: async (id, opts) => ({ sequence_name: "AutoSync Cut - Song Master - fixture", xml_path: xmlPath, stats: {}, warnings: [], sections: [], preview: null, opts }) };
+  const fc = createFirstCut(fake.ppro, pr, api, async () => {});
+  const out = await fc.make("J1", { style: "hype" });
+  assert.strictEqual(out.imported, true);
+  const seq = (await fake.project.getSequences()).find((s) => s.name === out.sequence_name);
+  assert.ok(seq, "sequence created");
+  assert.deepStrictEqual(fake.project.opened, [seq.guid]);
+  const text = fs.readFileSync(xmlPath, "utf8");
+  const want = [...text.matchAll(/<clipitem id="cut-\d+">[\s\S]*?<start>(\d+)<\/start><end>(\d+)<\/end><in>(\d+)<\/in>/g)].map((m) => m.slice(1, 4).map(BigInt));
+  const items = seq.video[0].items;
+  assert.strictEqual(items.length, want.length);
+  for (let i = 0; i < want.length; i++) {
+    assert.strictEqual(items[i].start, want[i][0] * seq.tpf);
+    assert.strictEqual(items[i].inTicks, want[i][2] * seq.tpf);
+  }
+});
+
+test("first cut: when Premiere does not build a sequence from the XML the panel says so", async () => {
+  const { fake, pr } = setup({ xmlImport: "none" });
+  const api = { cut: async () => ({ sequence_name: "AutoSync Cut - x", xml_path: path.join(FIX, "cut.xml"), stats: {}, warnings: [], sections: [], preview: null }) };
+  const out = await createFirstCut(fake.ppro, pr, api, async () => {}).make("J1", {});
+  assert.strictEqual(out.imported, false);
+  assert.strictEqual(out.sequenceGuid, null);
+});
+
+test("first cut preview: polls until the helper has rendered it, then imports the MP4", async () => {
+  const { fake, pr } = setup();
+  let polls = 0;
+  const api = {
+    cut: async () => ({ sequence_name: "S", preview: { state: "running", done: 0, total: 10 } }),
+    cutPreview: async () => (++polls < 3 ? { state: "running", done: polls, total: 10 } : { state: "done", path: "D:/shoot/cut.preview.mp4" }),
+  };
+  const seen = [];
+  const out = await createFirstCut(fake.ppro, pr, api, async () => {}).preview("J1", {}, (st) => seen.push(st.done));
+  assert.strictEqual(out.path, "D:/shoot/cut.preview.mp4");
+  assert.ok(out.imported);
+  assert.deepStrictEqual(seen, [0, 1, 2]);
+  const failing = { cut: async () => ({ preview: { state: "running" } }), cutPreview: async () => ({ state: "failed", error: "disk full" }) };
+  await assert.rejects(createFirstCut(fake.ppro, pr, failing, async () => {}).preview("J1", {}), /disk full/);
 });

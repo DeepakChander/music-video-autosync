@@ -97,6 +97,31 @@
   </div>
 
   <div class="card">
+    <div class="h2">6. First cut (edit)</div>
+    <div class="muted small">Cuts between your synced takes on the beat: a new shot at every section, faster in choruses, never the same take twice in a row, story footage (clips without the song) in verses and breaks. Lip sync stays exact. It makes a new sequence; the synced draft stays as it is.</div>
+    <div class="row">
+      <span class="label">Style</span>
+      <select id="cutStyle">
+        <option value="performance">Performance</option>
+        <option value="performance_story">Performance + story</option>
+        <option value="hype">Hype (fast, punch-ins, flashes)</option>
+        <option value="ballad">Ballad (longer shots, dissolves)</option>
+      </select>
+    </div>
+    <div class="row">
+      <span class="label">Pace</span>
+      <select id="cutPace">
+        <option value="0.7">Slower</option>
+        <option value="1" selected>Normal</option>
+        <option value="1.4">Faster</option>
+      </select>
+      <label><input type="checkbox" id="cutEffects" checked> Effects</label>
+    </div>
+    <div class="row wrap"><button id="makeCut" class="primary" disabled>MAKE FIRST CUT</button><button id="cutVariation" disabled>Another variation</button><button id="cutPreview" disabled>Render preview video</button></div>
+    <div id="cutOut" class="summary hidden"></div>
+  </div>
+
+  <div class="card">
     <div class="h2">Review</div>
     <div class="row">
       <select id="filter">

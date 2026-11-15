@@ -48,6 +48,28 @@ mid-run, **Resume** continues from its cache.
   position matched; otherwise every mismatch is listed.
 - **Open Sequence** brings the draft back.
 
+## First cut (edit)
+
+After **Analyse All Clips** has finished, section **6. First cut** builds an edited sequence:
+
+- Cuts land on the beat (Premiere frame grid), with a new shot at every song section (verse,
+  chorus...). Choruses cut faster than verses; bridges and intros hold longer.
+- Never the same take twice in a row; screen time is spread over the takes.
+- Synced takes keep exact lip sync (each shot uses the take's frames for that moment of the song).
+- Story footage = clips without the song (UNSYNCED, e.g. no audio) and slow-motion takes. In
+  **Performance + story** (and Hype/Ballad, a little) they fill verses, intros and breaks, in file
+  name order, never the first beat of a chorus.
+- Styles: **Performance** (beat/bar pacing), **Performance + story**, **Hype** (fast, zoom
+  punch-ins and white flashes on choruses), **Ballad** (longer shots, dissolves in quiet parts).
+  **Pace** makes all shots shorter or longer. **Effects** off = straight cuts only.
+- Section markers on the sequence name each part (Intro, Verse 1, Chorus 1...). Section detection
+  is automatic and can be off by a bar or two (docs/LIMITATIONS.md).
+- **Another variation** = same rules, different choices. **Render preview video** = an MP4 of the
+  cut with the song, also imported into bin AutoSync.
+
+The cut is a starting point: swap shots, trim and grade as usual. The synced draft (step 5) keeps
+every take on its own track for alternates.
+
 ## Statuses
 
 | Status | Meaning | Placed by default |

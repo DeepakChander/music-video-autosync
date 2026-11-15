@@ -5,6 +5,11 @@ Premiere Pro sequence. Every clip with usable reference audio is placed at its s
 (within 1 frame); every clip without one is reported UNSYNCED with a reason. No position is
 ever guessed.
 
+Then it edits: the **first cut** cuts between the synced takes on the beat of the song, with a new
+shot at every section, pacing by style (performance, performance + story, hype, ballad), story
+footage in verses and breaks, section markers, optional punch-ins/flashes/dissolves and a preview
+video (docs/EDIT_DESIGN.md).
+
 It is signal processing (MFCC cross-correlation + GCC-PHAT), not machine learning.
 
 ## Components
@@ -13,7 +18,7 @@ It is signal processing (MFCC cross-correlation + GCC-PHAT), not machine learnin
 |---|---|---|
 | `engine/` | Sync engine: decode, features, locate, validate, confidence, layout, `sync_result.json` | Pure Python, no Premiere, no network |
 | `helper/` | Local FastAPI service on 127.0.0.1: jobs, progress, cancel, cache, token, overrides, XML export | Windows tray app |
-| `export/` | FCP7 XML (xmeml v5) writer for placement adapter B | Called by the helper |
+| `export/` | FCP7 XML (xmeml v5) writers: synced draft and first cut; preview MP4 renderer | Called by the helper |
 | `panel/` | Premiere Pro UXP panel: UI, placement adapters A (UXP) and B (XML), readback verification | Inside Premiere |
 | `tools/` | Synthetic take generator, accuracy report, threshold calibration | Development / acceptance |
 | `docs/` | INSTALL, USER_GUIDE, LIMITATIONS, DECISIONS, LICENSES, PREMIERE_API_NOTES, reports | |

@@ -117,6 +117,9 @@ function createApi(deps) {
     selftest: (count, sequence) => call("POST", "/selftest", { count, sequence }),
     accuracy: (id) => call("GET", `/jobs/${encodeURIComponent(id)}/accuracy`),
     saveReport: (id, name, report) => call("POST", `/jobs/${encodeURIComponent(id)}/reports`, { name, report }),
+    music: (id) => call("GET", `/jobs/${encodeURIComponent(id)}/music`),
+    cut: (id, opts) => call("POST", `/jobs/${encodeURIComponent(id)}/cut`, opts || {}),
+    cutPreview: (id) => call("GET", `/jobs/${encodeURIComponent(id)}/cut/preview`),
   };
 }
 

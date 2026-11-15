@@ -73,7 +73,13 @@ function setup() {
   const lfs = { getFileForOpening: rec("pick", (o) => (o.allowMultiple ? [{ nativePath: "D:/shoot/takes/a.mov" }, { nativePath: "D:/shoot/takes/b.mov" }] : { nativePath: "D:/shoot/Song Master.wav" })) };
   const doc = fakeDom();
   const common = createCommon({}, core, {});
-  const view = createView({ doc, core, api, pr, adapters, selftest, common, storage, lfs, hostVersion: "26.5.0", setInterval: () => 0 });
+  const cutOut = { sequence_name: "AutoSync Cut - S", xml_path: "C:/cut.xml", imported: true, sequenceGuid: "G2", tempo_bpm: 120,
+    stats: { shots: 40, performance_shots: 36, story_shots: 4, mean_shot_s: 2.1, takes_used: 5 }, warnings: [], sections: [{ kind: "verse" }, { kind: "chorus" }], notes: [] };
+  const firstcut = {
+    make: rec("firstcut.make", () => Object.assign({}, cutOut)),
+    preview: rec("firstcut.preview", { path: "C:/cut.preview.mp4", imported: true, note: null, sequenceName: "AutoSync Cut - S" }),
+  };
+  const view = createView({ doc, core, api, pr, adapters, selftest, common, storage, lfs, firstcut, hostVersion: "26.5.0", setInterval: () => 0 });
   return { view, doc, calls, storage };
 }
 
@@ -118,6 +124,18 @@ test("each button performs its real operation", async () => {
   assert.match(doc.els.get("summary").innerHTML, /File &gt; Import/);
   await click("verifyImported");
   assert.ok(names(calls).includes("xml.verifyImported"));
+  doc.els.get("cutStyle").value = "hype";
+  await click("makeCut");
+  const mk = calls.filter((c) => c[0] === "firstcut.make");
+  assert.strictEqual(mk.length, 1);
+  assert.strictEqual(mk[0][1], "J1");
+  assert.deepStrictEqual(Object.assign({}, mk[0][2]), { style: "hype", pace: 1, effects: true, seed: 0, place_low: false });
+  assert.match(doc.els.get("cutOut").innerHTML, /First cut ready/);
+  await click("cutVariation");
+  assert.strictEqual(calls.filter((c) => c[0] === "firstcut.make")[1][2].seed, 1, "another variation = next seed");
+  await click("cutPreview");
+  assert.ok(names(calls).includes("firstcut.preview"));
+  assert.match(doc.els.get("cutOut").innerHTML, /cut\.preview\.mp4/);
   await click("selftestQuick");
   await click("selftestFull");
   assert.deepStrictEqual(calls.filter((c) => c[0] === "selftest.run").map((c) => c[1].count), [24, 200]);

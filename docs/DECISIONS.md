@@ -301,3 +301,22 @@ fails the build if any other file requires a relative module.
 - **Verified:** panel tests against the simulated Premiere (19 pass, one new). **Not verified:**
   scrolling and selection in the real Premiere; the tester's next run checks both.
 - The panel version is 0.1.1 so Creative Cloud installs the new `.ccx` over the old one.
+
+## D-025 First cut (edit) from the sync result
+
+- **Request:** the client wants the tool to edit, not only sync: cuts between angles on the music,
+  story footage, effects, colour (15 Nov 2026). Research: docs/EDIT_DESIGN.md section 1 (sources).
+- **Choice:** a deterministic planner (engine/edit.py) over a music map (engine/music.py, numpy/scipy
+  only: librosa adds ~165 MB and in-process LGPL libraries; madmom/Essentia models are non-commercial).
+  Cuts on beats, forced cuts at section starts, pacing by style + section + loudness, holds mixed
+  with short shots (research: mode ~1 beat, mean 2-5 s), never the same take twice in a row (a take
+  that alone covers the next beat simply continues), balanced screen time, story footage in
+  verses/breaks in file order. Lip sync is structural: src_in = take_in + (shot_start - take_start).
+- **Output:** an FCP7 XML sequence (cuts, A1 song, markers, effects) imported by the panel, and a
+  preview MP4 rendered by FFmpeg (BT.709 in and out; untagged HD would otherwise be read as BT.601).
+- **Verified:** planner rules on hand-built shoots (tests/unit/test_edit.py); every frame of a
+  rendered preview shows the planned take and source frame (tests/export/test_edit_outputs.py);
+  helper endpoints (tests/helper/test_cut_api.py); panel import/open against the simulated Premiere.
+  **Not verified:** Premiere importing the cut XML (markers, keyframes, transitions) on a real
+  install; the next client test checks it.
+
