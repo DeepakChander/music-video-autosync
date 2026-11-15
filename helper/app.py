@@ -103,6 +103,28 @@ class ShotsReq(_Strict):
     faces: bool = True
 
 
+class AdReq(_Strict):
+    script_path: str
+    clip_paths: list[str] = Field(min_length=1, max_length=2000)
+    sequence: SequenceInfo
+    target_s: Optional[float] = Field(None, gt=0, le=600)
+    takelog_path: Optional[str] = None
+    music_path: Optional[str] = None
+    vo_path: Optional[str] = None
+    transcribe: bool = True
+    model: str = Field("base.en", pattern="^(tiny\\.en|base\\.en|small\\.en)$")
+    analyse_shots: bool = False
+    sequence_name: Optional[str] = None
+
+
+class PathReq(_Strict):
+    path: str
+
+
+class PreviewReq(_Strict):
+    width: int = Field(1280, ge=320, le=3840)
+
+
 def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> FastAPI:
     app = FastAPI(title="Music Video AutoSync helper", version=__version__, docs_url=None, redoc_url=None,
                   openapi_url=None)
@@ -391,6 +413,63 @@ def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> Fas
         if st is None:
             raise JobError("NO_PREVIEW", "No preview has been started for this job", 404)
         return st
+
+    # ------------------------------------------------------------------ ad first cut
+    from .adjobs import AdJobError, AdJobs
+    ads = AdJobs(cache_dir)
+
+    @app.exception_handler(AdJobError)
+    async def _ad_error(_req: Request, e: AdJobError):
+        return _err(e.status, e.code, e.message)
+
+    @app.post("/ad/script")
+    def ad_script(req: PathReq):
+        """Read a script / storyboard / shot list and return its shots (to check before building)."""
+        from engine.script import ScriptError, parse_script
+        if not os.path.isfile(req.path):
+            raise JobError("FILE_NOT_FOUND", f"No such file: {req.path}", 404)
+        try:
+            sc = parse_script(req.path)
+        except ScriptError as e:
+            raise JobError("SCRIPT_ERROR", str(e), 422) from e
+        return sc.model_dump(mode="json")
+
+    @app.post("/ad/template")
+    def ad_template(req: PathReq):
+        """Write the shot-list template CSV into a folder (or to a file path ending in .csv)."""
+        from engine.script import write_template
+        path = req.path if req.path.lower().endswith(".csv") else os.path.join(req.path, "AutoSync shot list template.csv")
+        if not os.path.isdir(os.path.dirname(os.path.abspath(path))):
+            raise JobError("FILE_NOT_FOUND", f"No such folder: {os.path.dirname(path)}", 404)
+        return {"path": write_template(path)}
+
+    @app.post("/ad/jobs", status_code=201)
+    def ad_create(req: AdReq):
+        for label, p in (("script", req.script_path), ("take log", req.takelog_path), ("music bed", req.music_path),
+                         ("VO recording", req.vo_path)):
+            if p and not os.path.isfile(p):
+                raise JobError("FILE_NOT_FOUND", f"{label} not found: {p}", 404)
+        return ads.create(req.model_dump(mode="json"))
+
+    @app.get("/ad/jobs/{job_id}")
+    def ad_status(job_id: str):
+        return ads.get(job_id)
+
+    @app.post("/ad/jobs/{job_id}/preview")
+    def ad_preview(job_id: str, req: PreviewReq):
+        return ads.start_preview(job_id, req.width)
+
+    @app.get("/ad/jobs/{job_id}/preview")
+    def ad_preview_status(job_id: str):
+        return ads.preview(job_id)
+
+    @app.get("/ad/speech")
+    def ad_speech():
+        """Is local speech-to-text installed, and which models are already downloaded?"""
+        from engine import stt
+        mdir = os.path.join(cache_dir, "models")
+        return {"available": stt.available(),
+                "models": {k: {"downloaded": os.path.isfile(stt.model_file(k, mdir)), "bytes": v[1]} for k, v in stt.MODELS.items()}}
 
     @app.post("/selftest", status_code=201)
     def selftest(req: SelfTestReq):

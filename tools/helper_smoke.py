@@ -148,6 +148,32 @@ def main(argv=None) -> int:
     st, cut = call(f"{base}/jobs/{job_id}/cut", token, "POST", {"style": "performance", "colour": True})
     check("first cut with colour match", st == 200 and os.path.isfile(cut.get("xml_path", "")) and cut.get("colour"),
           f"{cut.get('stats', {}).get('shots')} shots, hero {cut.get('colour', {}).get('hero_name')}" if st == 200 else str(cut))
+    # Ad first cut: script + take log over the job's clips (no speech model download needed).
+    import platform
+    import tempfile
+    st, sp = call(f"{base}/ad/speech", token)
+    intel_mac = sys.platform == "darwin" and platform.machine() == "x86_64"
+    if st == 200 and not sp.get("available") and intel_mac:
+        print("[SKIP] speech-to-text library (no build for Intel Macs; dialogue matching uses take log / file names)")
+    else:
+        check("speech-to-text library loads", st == 200 and sp.get("available") is True, str(sp))
+    vids = [c for c in res.get("clips", []) if c.get("source_fps")][:3]
+    if len(vids) >= 2:
+        d = tempfile.mkdtemp(prefix="autosync_smoke_ad_")
+        script = os.path.join(d, "script.csv")
+        log = os.path.join(d, "takelog.csv")
+        with open(script, "w", encoding="utf-8") as f:
+            f.write("shot,type,description,duration\n" + "".join(f"{i + 1}A,mos,shot {i + 1},2\n" for i in range(len(vids))))
+        with open(log, "w", encoding="utf-8") as f:
+            f.write("clip,shot,take,circled\n" + "".join(f"{c['name']},{i + 1}A,1,yes\n" for i, c in enumerate(vids)))
+        st, aj = call(f"{base}/ad/jobs", token, "POST", {"script_path": script, "clip_paths": [c["path"] for c in vids],
+                                                         "sequence": seq, "takelog_path": log, "transcribe": False})
+        while st in (200, 201) and aj.get("state") == "running":
+            time.sleep(1)
+            st, aj = call(f"{base}/ad/jobs/{aj['id']}", token)
+        r = aj.get("result") or {}
+        check("ad first cut (script + take log)", aj.get("state") == "done" and r.get("stats", {}).get("matched") == len(vids)
+              and os.path.isfile(r.get("xml_path", "")), f"{r.get('stats', {}).get('matched')}/{len(vids)} shots, error={aj.get('error')}")
     failed = [r for r in results if not r[1]]
     print(f"\n{len(results) - len(failed)}/{len(results)} checks passed; job {job_id}")
     return 1 if failed else 0

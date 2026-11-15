@@ -17,6 +17,14 @@ Checked 2026-11-13 from installed package metadata (`importlib.metadata`), pinne
 | anyio, idna, h11, click, annotated-types, typing-extensions, typing-inspection | pinned | MIT / BSD / PSF | Helper dependencies |
 | pillow | 13.0.0 | MIT-CMU | Tray icon |
 | opencv-python-headless | 4.14.0.94 | Apache-2.0 (OpenCV), MIT (packaging) | Face detection in shot analysis (`cv2.FaceDetectorYN`). The wheel's bundled LGPL FFmpeg DLL (`opencv_videoio_ffmpeg*.dll`) is excluded from the build: AutoSync never decodes video through OpenCV |
+| rapidfuzz | 3.14.6 | MIT | Ad: line alignment |
+| python-docx / lxml | 1.2.0 / 6.1.3 | MIT / BSD-3-Clause | Ad: .docx scripts |
+| openpyxl / et-xmlfile | 3.1.5 / 2.0.0 | MIT / MIT | Ad: .xlsx shot lists |
+| pypdf | 7.1.0 | BSD-3-Clause | Ad: storyboard PDFs |
+| pywhispercpp (whisper.cpp, ggml) | 1.5.1 | MIT | Ad: local speech-to-text. Not installed on Intel Macs (no wheel) |
+| requests / urllib3 / charset-normalizer / platformdirs | pinned | Apache-2.0 / MIT / MIT / MIT | pywhispercpp dependencies |
+| tqdm / certifi | 4.70.1 / 2026.10.23 | MPL-2.0 AND MIT / MPL-2.0 | pywhispercpp dependencies; unmodified, source at https://github.com/tqdm/tqdm and https://github.com/certifi/python-certifi |
+| Whisper models `ggml-{tiny,base,small}.en.bin` | whisper.cpp model repository @ 5359861, SHA-256 pinned in `engine/stt.py` | MIT (OpenAI Whisper weights) | Downloaded on first use, not shipped |
 | YuNet face model `face_detection_yunet_2023mar.onnx` | opencv_zoo @ eb9f4f2, sha256 8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4 | MIT (Copyright (c) 2020 Shiqi Yu) | `engine/models/`, loaded by `engine/shots.py` |
 | **pystray** | 0.19.5 | **LGPL-3.0** | Tray icon. Shipped as plain, replaceable `.py` files (PyInstaller `module_collection_mode="py"`), so a user can swap in a modified pystray. Source: https://github.com/moses-palmer/pystray |
 | **FFmpeg** (ffmpeg.exe, ffprobe.exe) | recorded at build time in `ffmpeg\FFMPEG_VERSION.txt` | **LGPL-2.1-or-later** build | Called as a separate process, never linked. Build: BtbN/FFmpeg-Builds "win64-lgpl" static (the release workflow refuses any build configured with `--enable-gpl`). License text in `ffmpeg\LICENSE-FFmpeg.txt`. Source: https://ffmpeg.org/download.html and https://github.com/BtbN/FFmpeg-Builds |

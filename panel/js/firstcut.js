@@ -81,7 +81,44 @@ function createFirstCut(ppro, pr, api, sleepFn) {
     return st;
   }
 
-  return { make, preview, importXml, analyseShots };
+  // Ad first cut: the helper reads the script, matches the takes and writes the XML; the panel
+  // imports and opens it the same way as the music video cut.
+  async function makeAd(req, onProgress) {
+    let st = await api.adCreate(req);
+    while (st && (st.state === "running" || st.state === "queued")) {
+      if (onProgress) onProgress(st.progress || {});
+      await sleep(1000);
+      st = await api.adJob(st.id);
+    }
+    if (!st || st.state !== "done") throw new Error(`The ad cut could not be built: ${st && st.error ? st.error : "no status from the helper"}`);
+    const r = st.result;
+    const project = await pr.activeProject();
+    const imp = await importXml(project, r.xml_path, r.sequence_name);
+    if (imp.seq) await pr.openSequence(project, imp.seq, 0n);
+    return Object.assign({ jobId: st.id }, r, { imported: Boolean(imp.seq), sequenceGuid: imp.seq ? String(imp.seq.guid) : null, notes: imp.notes });
+  }
+
+  async function adPreview(jobId, width, onProgress) {
+    let st = await api.adPreviewStart(jobId, width);
+    while (st && st.state === "running") {
+      if (onProgress) onProgress(st);
+      await sleep(1000);
+      st = await api.adPreviewStatus(jobId);
+    }
+    if (!st || st.state !== "done") throw new Error(`The ad preview could not be rendered: ${st && st.error ? st.error : "no status from the helper"}`);
+    const project = await pr.activeProject();
+    const bin = await autosyncBin(project);
+    let imported = false;
+    let note = null;
+    try {
+      imported = await project.importFiles([st.path], true, ppro.ProjectItem.cast(bin) || bin, false);
+    } catch (e) {
+      note = `Premiere did not import the preview: ${e && e.message ? e.message : e}`;
+    }
+    return { path: st.path, imported: Boolean(imported), note };
+  }
+
+  return { make, preview, importXml, analyseShots, makeAd, adPreview };
 }
 
 module.exports = { createFirstCut };

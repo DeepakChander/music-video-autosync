@@ -138,6 +138,28 @@
   </div>
 
   <div class="card">
+    <div class="h2">7. Ad first cut (script / storyboard)</div>
+    <div class="muted small">For commercials. Matches the footage from section 2 to a script, storyboard or shot list: by take log (circled takes first), by file names such as 03A_T2, and by the spoken lines. Picks the best take per shot and assembles them in script order with the frame rate and size from section 3. Missing shots are marked, never filled with a guess. No master song needed.</div>
+    <div class="row"><button id="adPickScript">Select script…</button><span id="adScriptName" class="muted grow">No script (.csv .xlsx .docx .fdx .txt .pdf)</span></div>
+    <div id="adScriptInfo" class="small"></div>
+    <div class="row wrap"><button id="adPickTakelog">Take log…</button><button id="adPickMusic">Music bed…</button><button id="adPickVo">VO recording…</button><button id="adClearExtras">Clear extras</button></div>
+    <div class="row"><span id="adExtras" class="muted small grow">Optional: take log (CSV: clip, shot, take, circled), music bed, VO recording</span></div>
+    <div class="row">
+      <span class="label">Length</span>
+      <select id="adTarget">
+        <option value="">As scripted</option>
+        <option value="6">6 s</option>
+        <option value="15">15 s</option>
+        <option value="30">30 s</option>
+        <option value="60">60 s</option>
+      </select>
+    </div>
+    <div class="row"><label><input type="checkbox" id="adTranscribe" checked> Match dialogue by speech (downloads a 148 MB speech model once)</label></div>
+    <div class="row wrap"><button id="makeAd" class="primary" disabled>MAKE AD FIRST CUT</button><button id="adPreview" disabled>Render ad preview</button><button id="adTemplate">Save shot-list template…</button></div>
+    <div id="adOut" class="summary hidden"></div>
+  </div>
+
+  <div class="card">
     <div class="h2">Review</div>
     <div class="row">
       <select id="filter">

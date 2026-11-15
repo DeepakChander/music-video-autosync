@@ -84,6 +84,14 @@ After **Analyse All Clips** has finished, section **6. First cut** builds an edi
 The cut is a starting point: swap shots, trim and grade as usual. The synced draft (step 5) keeps
 every take on its own track for alternates.
 
+## Ad first cut (section 7)
+
+For commercials: select the script, storyboard or shot list (.csv .xlsx .docx .fdx .txt .pdf), use
+the footage from section 2, optionally a take log, music bed and VO recording, choose a length and
+click **MAKE AD FIRST CUT**. Takes are found by take log (circled first), file names (03A_T2) and
+the spoken lines; each shot gets its best take in script order; missing shots get a red marker.
+Details, template and what has been checked: `docs/AD_GUIDE.md`.
+
 ## Statuses
 
 | Status | Meaning | Placed by default |

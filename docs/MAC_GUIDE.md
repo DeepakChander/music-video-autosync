@@ -90,8 +90,8 @@ cd ~/Desktop/music-video-autosync
 .venv/bin/python tools/helper_smoke.py --count 14
 ```
 
-Expected: **9/9 checks passed**. This proves the analysis, the shot analysis (face detection) and the
-first cut with colour match work on your Mac without Premiere.
+Expected: **11/11 checks passed**. This proves the analysis, the shot analysis (face detection), the
+first cut with colour match and the ad first cut work on your Mac without Premiere.
 
 ## Step 6. Install the panel in Premiere
 
@@ -160,6 +160,12 @@ Work on a copy of your project (File > Save As...). Then, in the panel, from top
    panel load a LUT, so in Lumetri Color > Basic Correction > Input LUT > Browse, choose the take's
    LUT (each clip's comment names it); the preview video already has the colour applied.
 
+8. **Ad first cut** (commercials, section 7): **Select script…** (.csv, .xlsx, .docx, .fdx, .txt or
+   storyboard .pdf; the panel lists the shots it read), add the footage in section 2, optionally a
+   **Take log**, **Music bed** and **VO recording**, choose a **Length**, then **MAKE AD FIRST CUT**.
+   The first time, the speech model (148 MB) downloads once. **Save shot-list template…** writes
+   a template to fill in. Full guide: `docs/AD_GUIDE.md`.
+
 | Status | Meaning | On the timeline |
 |---|---|---|
 | HIGH | Strong, clear match | Yes |
@@ -207,6 +213,16 @@ sharpness); `--colour` matches every take to a hero take and `--look warm` (cool
 bw_contrast, film_fade) adds a look, both as .cube LUTs in a `luts` folder next to the .xml.
 File > Import the .xml as above; the .mp4 plays anywhere.
 
+Ad first cut from the command line:
+
+```bash
+.venv/bin/python -m engine.cli ad --script ~/Desktop/script.docx --clips ~/Desktop/footage \
+  --fps 25 --target 30 --out ~/Desktop/ad.xml --preview ~/Desktop/ad.mp4
+```
+
+Add `--takelog log.csv`, `--music bed.wav`, `--vo vo.wav` when you have them;
+`.venv/bin/python -m engine.cli ad --template ~/Desktop/shotlist.csv` writes the template.
+
 | Your timeline | `--fps` value |
 |---|---|
 | 23.976 | `24000/1001` |
@@ -238,7 +254,7 @@ If the panel changed, install the new `.ccx` again (step 6).
 | `zsh: command not found: brew` in a new window | Close Terminal and open it again (setup added Homebrew to `~/.zprofile`). The AutoSync scripts find Homebrew either way |
 | `permission denied: ./scripts/...` | `chmod +x scripts/*.sh` |
 | `port 47653 is already in use` | A helper is already running in another Terminal window; use it or close it |
-| The panel does not scroll, **Use selected project items** ignores a selected bin, or there is no **First cut** section | An older panel. Update (see "Updating to a newer version") and install the new `.ccx`; the panel's About line shows **Panel 0.3.0** or later |
+| The panel does not scroll, **Use selected project items** ignores a selected bin, or there is no **First cut** / **Ad first cut** section | An older panel. Update (see "Updating to a newer version") and install the new `.ccx`; the panel's About line shows **Panel 0.4.0** or later |
 | `helper_smoke.py` says the helper is not reachable | Start it first (step 4) and wait for "Application startup complete." |
 | The panel shows red, but the helper runs with `https://` | Premiere may not accept the local certificate. Use Plan B, and send us a screenshot plus the panel's error from UXP Developer Tool > Debug |
 | A take is UNSYNCED / DECODE_ERROR | FFmpeg cannot read its audio (some RAW formats). Place it by hand in Review (type a timecode, click **Set**) |

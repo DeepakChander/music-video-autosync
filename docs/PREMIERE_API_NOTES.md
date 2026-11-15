@@ -405,6 +405,10 @@ const token = (await fs.readFile(`${os.homedir()}/AppData/Roaming/X/token`, { en
 - `getFileForOpening(options)` returns `Promise<File|Array<File>>`. Options: `initialDomain`, `types: Array<string>` (default `['.*']`), `initialLocation` and `allowMultiple: boolean` (default false). "Return empty if no file was selected."
 - `entry.nativePath`: "The platform native file-system path of this entry. Read-only".
 - The Adobe sample passes types without a dot: `types: ["prproj"]`.
+- `getFolder(options)`: "Gets a folder from the file system via a folder picker dialog ... If the
+  user dismisses the picker, `null` is returned instead." Returns `Promise<Folder | null>`
+  (VERIFIED (doc): AdobeDocs/uxp-premiere-pro, uxp-api/.../persistent-file-storage/file-system-provider.md,
+  checked 15 Nov 2026). Used by "Save shot-list template…".
 
 ```js
 const lfs = require("uxp").storage.localFileSystem;

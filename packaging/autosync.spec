@@ -4,7 +4,7 @@
 # pystray is LGPL-3.0: collected as plain .py files so it can be replaced (docs/LICENSES.md).
 import os
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules
 
 ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))
 ICON = os.path.join(ROOT, "packaging", "autosync.ico")
@@ -14,11 +14,16 @@ EXCLUDES = ["tkinter", "matplotlib", "opentimelineio", "pytest", "IPython"]
 
 # YuNet face model (MIT) next to engine/shots.py, where it looks for it.
 DATAS = [(os.path.join(ROOT, "engine", "models", "face_detection_yunet_2023mar.onnx"), os.path.join("engine", "models"))]
+# Ad first cut: python-docx templates, whisper.cpp native libraries.
+DATAS += collect_data_files("docx")
+BINARIES = collect_dynamic_libs("pywhispercpp")
+HIDDEN += (collect_submodules("pywhispercpp") + collect_submodules("rapidfuzz") + collect_submodules("openpyxl")
+           + collect_submodules("pypdf") + ["docx", "lxml.etree", "_pywhispercpp"])
 
 a_helper = Analysis([os.path.join(ROOT, "packaging", "helper_entry.py")], pathex=[ROOT], hiddenimports=HIDDEN + ["pystray._win32", "cv2"],
-                    excludes=EXCLUDES, datas=DATAS, module_collection_mode={"pystray": "py"})
+                    excludes=EXCLUDES, datas=DATAS, binaries=BINARIES, module_collection_mode={"pystray": "py"})
 a_engine = Analysis([os.path.join(ROOT, "packaging", "engine_entry.py")], pathex=[ROOT], hiddenimports=HIDDEN + ["cv2"],
-                    datas=DATAS, excludes=EXCLUDES + ["pystray"])
+                    datas=DATAS, binaries=BINARIES, excludes=EXCLUDES + ["pystray"])
 
 
 def _no_opencv_ffmpeg(entries):

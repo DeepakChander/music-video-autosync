@@ -122,6 +122,13 @@ function createApi(deps) {
     cutPreview: (id) => call("GET", `/jobs/${encodeURIComponent(id)}/cut/preview`),
     shots: (id, opts) => call("POST", `/jobs/${encodeURIComponent(id)}/shots`, opts || {}),
     shotsStatus: (id) => call("GET", `/jobs/${encodeURIComponent(id)}/shots`),
+    adScript: (path) => call("POST", "/ad/script", { path }),
+    adTemplate: (path) => call("POST", "/ad/template", { path }),
+    adCreate: (req) => call("POST", "/ad/jobs", req),
+    adJob: (id) => call("GET", `/ad/jobs/${encodeURIComponent(id)}`),
+    adPreviewStart: (id, width) => call("POST", `/ad/jobs/${encodeURIComponent(id)}/preview`, { width }),
+    adPreviewStatus: (id) => call("GET", `/ad/jobs/${encodeURIComponent(id)}/preview`),
+    adSpeech: () => call("GET", "/ad/speech"),
   };
 }
 

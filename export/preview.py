@@ -66,6 +66,50 @@ def _shot_filter(shot: Shot, w: int, h: int, fps: Fraction, lut: Optional[str]) 
     return ",".join(f)
 
 
+def _render_picture(segments: list[tuple[Optional[str], int, int, Optional[str]]], fps: Fraction, width: int,
+                    height: int, encoder: str, tmp: str, workers: int,
+                    progress: Optional[Callable[[int, int], None]]) -> str:
+    """Render picture-only segments [(path or None for black, src_in_frame, frames, -vf filter)] and
+    join them; returns the joined file (video only)."""
+    ffmpeg = find_tool("ffmpeg")
+    parts: list[str] = []
+    jobs = []
+    for i, (path, src_in, n, vf) in enumerate(segments):
+        part = os.path.join(tmp, f"shot{i:05d}.mp4")
+        parts.append(part)
+        if path is None:
+            cmd = [ffmpeg, "-y", "-v", "error", "-f", "lavfi", "-i",
+                   f"color=c=black:s={width}x{height}:r={fps.numerator}/{fps.denominator}",
+                   "-frames:v", str(n)] + _enc_args(encoder) + ["-an", part]
+        else:
+            start_s = float(Fraction(src_in) / fps)
+            cmd = [ffmpeg, "-y", "-v", "error", "-ss", f"{start_s:.6f}", "-i", path, "-vf", vf,
+                   "-frames:v", str(n)] + _enc_args(encoder) + ["-an", part]
+        jobs.append(cmd)
+    done = [0]
+
+    def run(cmd):
+        r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        done[0] += 1
+        if progress:
+            progress(done[0], len(jobs))
+        if r.returncode != 0:
+            raise PreviewError(r.stderr.decode("utf-8", "replace")[-400:])
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as ex:
+        list(ex.map(run, jobs))
+    listing = os.path.join(tmp, "list.txt")
+    with open(listing, "w", encoding="utf-8") as f:
+        for p in parts:
+            f.write(f"file '{p}'\n")
+    joined = os.path.join(tmp, "picture.mp4")
+    r = subprocess.run([ffmpeg, "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", listing, "-c", "copy", joined],
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if r.returncode != 0:
+        raise PreviewError(r.stderr.decode("utf-8", "replace")[-400:])
+    return joined
+
+
 def render_preview(result: SyncResult, plan: EditPlan, out_path: str, width: int = 1280,
                    luts: Optional[dict[str, str]] = None, workers: int = 4,
                    progress: Optional[Callable[[int, int], None]] = None) -> dict:
@@ -77,47 +121,81 @@ def render_preview(result: SyncResult, plan: EditPlan, out_path: str, width: int
     luts = luts or {}
     tmp = tempfile.mkdtemp(prefix="autosync_preview_")
     try:
-        parts: list[str] = []
-        jobs = []
-        for i, s in enumerate(plan.shots):
-            part = os.path.join(tmp, f"shot{i:05d}.mp4")
-            parts.append(part)
+        segs = []
+        for s in plan.shots:
             n = s.end - s.start
             if s.kind == "gap" or not s.clip_id:
-                cmd = [ffmpeg, "-y", "-v", "error", "-f", "lavfi", "-i",
-                       f"color=c=black:s={width}x{height}:r={fps.numerator}/{fps.denominator}",
-                       "-frames:v", str(n)] + _enc_args(encoder) + ["-an", part]
+                segs.append((None, 0, n, None))
             else:
-                c = clips[s.clip_id]
-                start_s = float(Fraction(s.src_in) / fps)
-                cmd = [ffmpeg, "-y", "-v", "error", "-ss", f"{start_s:.6f}", "-i", c.path,
-                       "-vf", _shot_filter(s, width, height, fps, luts.get(s.clip_id)),
-                       "-frames:v", str(n)] + _enc_args(encoder) + ["-an", part]
-            jobs.append(cmd)
-
-        done = [0]
-
-        def run(cmd):
-            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            done[0] += 1
-            if progress:
-                progress(done[0], len(jobs))
-            if r.returncode != 0:
-                raise PreviewError(r.stderr.decode("utf-8", "replace")[-400:])
-
-        with ThreadPoolExecutor(max_workers=max(1, workers)) as ex:
-            list(ex.map(run, jobs))
-
-        listing = os.path.join(tmp, "list.txt")
-        with open(listing, "w", encoding="utf-8") as f:
-            for p in parts:
-                f.write(f"file '{p}'\n")
+                segs.append((clips[s.clip_id].path, s.src_in, n, _shot_filter(s, width, height, fps, luts.get(s.clip_id))))
+        picture = _render_picture(segs, fps, width, height, encoder, tmp, workers, progress)
         total_s = float(Fraction(plan.duration_frames) / fps)
         out_tmp = out_path + ".tmp.mp4"
-        cmd = [ffmpeg, "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", listing, "-i", result.master.path,
+        cmd = [ffmpeg, "-y", "-v", "error", "-i", picture, "-i", result.master.path,
                "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
                "-t", f"{total_s:.6f}", "-movflags", "+faststart", out_tmp]
         r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if r.returncode != 0:
+            raise PreviewError(r.stderr.decode("utf-8", "replace")[-400:])
+        os.replace(out_tmp, out_path)
+        return {"path": os.path.abspath(out_path), "encoder": encoder, "shots": len(plan.shots),
+                "width": width, "height": height, "seconds": round(total_s, 3)}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def render_ad_preview(plan, clip_paths: dict[str, str], out_path: str, width: int = 1280, height: int = 720,
+                      luts: Optional[dict[str, str]] = None, music_gain_db: float = -12.0, workers: int = 4,
+                      progress: Optional[Callable[[int, int], None]] = None) -> dict:
+    """Ad preview: shots in script order (black for missing shots), each dialogue shot's own
+    sound, the VO recording per line, the music bed underneath."""
+    ffmpeg = find_tool("ffmpeg")
+    encoder = pick_encoder(ffmpeg)
+    fps = Fraction(plan.fps_num, plan.fps_den)
+    luts = luts or {}
+    tmp = tempfile.mkdtemp(prefix="autosync_adpreview_")
+    try:
+        segs = []
+        for a in plan.shots:
+            n = a.end - a.start
+            if a.status == "missing" or not a.clip_id:
+                segs.append((None, 0, n, None))
+            else:
+                vf = [f"scale={width}:{height}:force_original_aspect_ratio=decrease:in_color_matrix=bt709:out_color_matrix=bt709",
+                      f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2", "setsar=1", f"fps={fps.numerator}/{fps.denominator}"]
+                lut = luts.get(a.clip_id)
+                if lut:
+                    vf.append(f"lut3d=file='{lut.replace(chr(92), '/').replace(':', chr(92) + ':')}'")
+                segs.append((clip_paths[a.clip_id], a.src_in, n, ",".join(vf)))
+        picture = _render_picture(segs, fps, width, height, encoder, tmp, workers, progress)
+        total_s = float(Fraction(plan.duration_frames) / fps)
+        # Audio: one input per sounding piece, delayed to its place, mixed without normalisation.
+        inputs, chains = [], []
+        def add(path, src_s, dur_s, at_s, gain_db=0.0):
+            k = len(chains) + 1  # input index (0 is the picture) and label number
+            inputs.extend(["-i", path])
+            ms = int(round(at_s * 1000))
+            chains.append(f"[{k}:a]atrim=start={src_s:.4f}:duration={dur_s:.4f},asetpts=PTS-STARTPTS,"
+                          f"aformat=sample_rates=48000:channel_layouts=stereo,volume={gain_db}dB,adelay={ms}|{ms}[a{k}]")
+        for a in plan.shots:
+            if a.status != "missing" and a.clip_id and a.kind == "dialogue" and a.line_score is not None:
+                add(clip_paths[a.clip_id], a.src_in / float(fps), (a.end - a.start) / float(fps), a.start / float(fps))
+            if plan.vo_path and a.vo_in_s is not None and a.vo_out_s is not None:
+                add(plan.vo_path, a.vo_in_s, a.vo_out_s - a.vo_in_s, a.start / float(fps))
+        if plan.music_path:
+            add(plan.music_path, 0.0, total_s, 0.0, music_gain_db)
+        out_tmp = out_path + ".tmp.mp4"
+        # A silent bed of exactly the cut's length is input 1 and sets the mix length
+        # (amix duration=first): every piece is delayed onto it.
+        base = ["-f", "lavfi", "-t", f"{total_s:.6f}", "-i", "anullsrc=r=48000:cl=stereo"]
+        shifted = [c.replace(f"[{k}:a]", f"[{k + 1}:a]", 1) for k, c in enumerate(chains, start=1)]
+        labels = "[1:a]" + "".join(f"[a{k}]" for k in range(1, len(chains) + 1))
+        fc = (";".join(shifted) + ";" if shifted else "") + f"{labels}amix=inputs={len(chains) + 1}:normalize=0:duration=first[mix]"
+        cmd = [ffmpeg, "-y", "-v", "error", "-nostdin", "-i", picture] + base + inputs
+        cmd += ["-filter_complex", fc, "-map", "0:v", "-map", "[mix]", "-c:a", "aac", "-b:a", "192k",
+                "-c:v", "copy", "-t", f"{total_s:.6f}", "-movflags", "+faststart", out_tmp]
+        r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+                           timeout=max(120.0, 10 * total_s))
         if r.returncode != 0:
             raise PreviewError(r.stderr.decode("utf-8", "replace")[-400:])
         os.replace(out_tmp, out_path)

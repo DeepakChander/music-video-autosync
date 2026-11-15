@@ -24,12 +24,14 @@ function createView(deps) {
     jobId: saved.jobId || null, job: null, result: null,
     draft: saved.draft || null, lastReport: null,
     cutSeed: saved.cutSeed || 0, cut: saved.cut || null, shots: null,
+    ad: Object.assign({ script: null, takelog: null, music: null, vo: null, jobId: null, result: null, scriptInfo: null }, saved.ad || {}),
   };
 
   function persist() {
     try {
       storage.setItem("autosync.state", JSON.stringify({ masterPath: state.masterPath, clipPaths: state.clipPaths, jobId: state.jobId,
-        draft: state.draft, settings: settingsSnapshot(), cutSeed: state.cutSeed, cut: state.cut }));
+        draft: state.draft, settings: settingsSnapshot(), cutSeed: state.cutSeed, cut: state.cut,
+        ad: { script: state.ad.script, takelog: state.ad.takelog, music: state.ad.music, vo: state.ad.vo, jobId: state.ad.jobId, result: state.ad.result } }));
     } catch (e) { /* non-critical */ }
   }
 
@@ -37,7 +39,8 @@ function createView(deps) {
     return { keepScratch: $("keepScratch").checked, muteScratch: $("muteScratch").checked, placeLow: $("placeLow").checked,
       rate2: $("rate2").checked, fps: $("fps").value, res: $("res").value, adapter: $("adapter").value,
       cutStyle: $("cutStyle").value, cutPace: $("cutPace").value, cutEffects: $("cutEffects").checked,
-      cutColour: $("cutColour").checked, cutLook: $("cutLook").value };
+      cutColour: $("cutColour").checked, cutLook: $("cutLook").value,
+      adTarget: $("adTarget").value, adTranscribe: $("adTranscribe").checked };
   }
 
   function restoreSettings() {
@@ -45,6 +48,8 @@ function createView(deps) {
     for (const k of ["keepScratch", "muteScratch", "placeLow", "rate2", "cutEffects", "cutColour"]) if (k in s) $(k).checked = Boolean(s[k]);
     for (const k of ["fps", "res", "adapter", "cutStyle", "cutPace", "cutLook"]) if (s[k]) $(k).value = s[k];
     if (!s.cutLook) $("cutLook").value = "none";
+    if ("adTarget" in s) $("adTarget").value = s.adTarget;
+    if ("adTranscribe" in s) $("adTranscribe").checked = Boolean(s.adTranscribe);
     if (!s.cutPace) $("cutPace").value = "1"; // "Normal", whatever the host does with `selected`
   }
 
@@ -121,7 +126,7 @@ function createView(deps) {
       banner(null);
     }
     const h = state.health;
-    $("about").innerHTML = `Panel 0.3.0 · Premiere ${esc(hostVersion || "?")}` +
+    $("about").innerHTML = `Panel 0.4.0 · Premiere ${esc(hostVersion || "?")}` +
       (h ? ` · Helper ${esc(h.version)} · Engine ${esc(h.engine_version)}<br>Cache: ${esc(h.cache_dir)}` : "");
   }
 
@@ -493,6 +498,90 @@ function createView(deps) {
     if (p.note) banner("warn", esc(p.note));
   }
 
+  // ------------------------------------------------------------------ ad first cut
+  const SCRIPT_TYPES = ["csv", "xlsx", "docx", "fdx", "txt", "pdf"];
+
+  async function pickOne(types) {
+    const f = await lfs.getFileForOpening({ allowMultiple: false, types });
+    return f ? f.nativePath : null;
+  }
+
+  function renderAdInputs() {
+    const a = state.ad;
+    $("adScriptName").textContent = a.script ? core.baseName(a.script) : "No script (.csv .xlsx .docx .fdx .txt .pdf)";
+    const si = a.scriptInfo;
+    $("adScriptInfo").innerHTML = si
+      ? `${si.shots.length} shots: ${["dialogue", "vo", "mos", "graphic"].map((k) => `${si.shots.filter((x) => x.kind === k).length} ${k}`).join(", ")}`
+        + (si.warnings || []).map((w) => `<br><span class="muted">${esc(w)}</span>`).join("")
+      : "";
+    const extras = [a.takelog && `take log ${core.baseName(a.takelog)}`, a.music && `music ${core.baseName(a.music)}`, a.vo && `VO ${core.baseName(a.vo)}`].filter(Boolean);
+    $("adExtras").textContent = extras.length ? extras.join(" · ") : "Optional: take log (CSV: clip, shot, take, circled), music bed, VO recording";
+  }
+
+  async function adPickScript() {
+    const p = await pickOne(SCRIPT_TYPES);
+    if (!p) return;
+    state.ad.script = p;
+    state.ad.scriptInfo = null;
+    persist();
+    renderAdInputs();
+    state.ad.scriptInfo = await api.adScript(p); // shows what was read before anything is built
+    renderAdInputs();
+  }
+
+  function renderAd(r) {
+    const el = $("adOut");
+    if (!r) { el.className = "summary hidden"; el.innerHTML = ""; return; }
+    const st = r.stats || {};
+    const lines = [];
+    if (r.imported) lines.push(`<span class="pass">Ad first cut ready.</span> Sequence <b>${esc(r.sequence_name)}</b> is open.`);
+    else if (r.xml_path) lines.push(`<b>Cut written, but Premiere did not import it automatically.</b> File &gt; Import:<br><span class="pos">${esc(r.xml_path)}</span>`);
+    lines.push(`${st.matched}/${st.shots} shots matched${st.suggested ? `, ${st.suggested} suggested from the storyboard (yellow markers: check)` : ""} · ${st.seconds} s${st.target_s ? ` (target ${st.target_s} s)` : ""}${st.circled_used ? ` · ${st.circled_used} circled takes used` : ""}`);
+    if (st.missing && st.missing.length) lines.push(`<span class="fail">Missing</span> ${esc(st.missing.join(", "))} (red markers on the sequence)`);
+    for (const s of (r.shots || []).slice(0, 40)) {
+      lines.push(`<span class="${s.status === "matched" ? "pass" : "fail"}">${esc(s.shot_id)}</span> ${esc(s.status === "missing" ? "missing" : s.name)} · ${esc(s.method || "")} ${esc(s.confidence || "")} · ${s.seconds} s <span class="muted">${esc(s.reason)}</span>`);
+    }
+    for (const w of r.warnings || []) lines.push(`<span class="muted">${esc(w)}</span>`);
+    if (r.preview && r.preview.path) lines.push(`Preview video: <span class="pos">${esc(r.preview.path)}</span>${r.preview.imported ? " (also in bin AutoSync)" : ""}`);
+    el.className = `summary ${r.imported && !(st.missing || []).length ? "ok" : "bad"}`;
+    el.innerHTML = lines.join("<br>");
+  }
+
+  async function makeAd() {
+    if (!state.ad.script) throw new Error("Select the script, storyboard or shot list first.");
+    if (!state.clipPaths.length) throw new Error("Add the footage in section 2 first.");
+    $("adOut").className = "summary";
+    $("adOut").textContent = "Building the ad cut…";
+    const target = $("adTarget").value;
+    const req = { script_path: state.ad.script, clip_paths: state.clipPaths, sequence: sequenceSettings(),
+      target_s: target ? Number(target) : null, takelog_path: state.ad.takelog, music_path: state.ad.music, vo_path: state.ad.vo,
+      transcribe: $("adTranscribe").checked };
+    const r = await firstcut.makeAd(req, (p) => { $("adOut").textContent = `${p.phase || "working"} ${p.total ? `${p.done}/${p.total}` : ""} ${p.current || ""}`; });
+    state.ad.jobId = r.jobId;
+    state.ad.result = { sequence_name: r.sequence_name, xml_path: r.xml_path, imported: r.imported, stats: r.stats, shots: r.shots, warnings: r.warnings };
+    persist();
+    renderAd(state.ad.result);
+  }
+
+  async function adPreview() {
+    if (!state.ad.jobId) throw new Error("Make the ad first cut first.");
+    $("adOut").className = "summary";
+    $("adOut").textContent = "Rendering the ad preview…";
+    const [w] = $("res").value.split("x").map(Number);
+    const p = await firstcut.adPreview(state.ad.jobId, Math.min(1280, w), (st) => { $("adOut").textContent = `Rendering the ad preview: shot ${st.done}/${st.total}`; });
+    state.ad.result = Object.assign({}, state.ad.result || {}, { preview: p });
+    persist();
+    renderAd(state.ad.result);
+    if (p.note) banner("warn", esc(p.note));
+  }
+
+  async function adTemplate() {
+    const folder = await lfs.getFolder();
+    if (!folder) return;
+    const r = await api.adTemplate(folder.nativePath);
+    banner("info", `Shot-list template saved: <span class="pos">${esc(r.path)}</span> (one row per shot; type = dialogue, vo, mos or graphic)`);
+  }
+
   // ------------------------------------------------------------------ self-test
   function renderSelftest(out) {
     const el = $("selftestOut");
@@ -537,6 +626,10 @@ function createView(deps) {
     $("generate").disabled = b || !helperOk || !state.result;
     $("openSequence").disabled = b || !state.draft;
     for (const id of ["makeCut", "cutVariation", "cutPreview", "analyseShots"]) $(id).disabled = b || !helperOk || !state.result;
+    $("makeAd").disabled = b || !helperOk || !state.ad.script || !state.clipPaths.length;
+    $("adPreview").disabled = b || !helperOk || !state.ad.jobId;
+    for (const id of ["adPickScript", "adPickTakelog", "adPickMusic", "adPickVo", "adClearExtras"]) $(id).disabled = b;
+    $("adTemplate").disabled = b || !helperOk;
     $("selftestQuick").disabled = b || !helperOk;
     $("selftestFull").disabled = b || !helperOk;
     const def = storage.getItem("autosync.defaultAdapter");
@@ -566,6 +659,14 @@ function createView(deps) {
     on("openSequence", "Open sequence", openSequence);
     on("verifyImported", "Verify imported sequence", verifyImported);
     on("analyseShots", "Analyse shots", analyseShots);
+    on("adPickScript", "Select script", adPickScript);
+    on("adPickTakelog", "Take log", async () => { const p = await pickOne(["csv"]); if (p) { state.ad.takelog = p; persist(); renderAdInputs(); } });
+    on("adPickMusic", "Music bed", async () => { const p = await pickOne(AUDIO_TYPES); if (p) { state.ad.music = p; persist(); renderAdInputs(); } });
+    on("adPickVo", "VO recording", async () => { const p = await pickOne(AUDIO_TYPES); if (p) { state.ad.vo = p; persist(); renderAdInputs(); } });
+    on("adClearExtras", "Clear extras", async () => { state.ad.takelog = null; state.ad.music = null; state.ad.vo = null; persist(); renderAdInputs(); });
+    on("makeAd", "Make ad first cut", makeAd);
+    on("adPreview", "Render ad preview", adPreview);
+    on("adTemplate", "Save shot-list template", adTemplate);
     on("makeCut", "Make first cut", makeCut);
     on("cutVariation", "Another variation", cutVariation);
     on("cutPreview", "Render preview video", cutPreview);
@@ -574,9 +675,11 @@ function createView(deps) {
     on("saveToken", "Save token", async () => { api.setToken($("tokenInput").value); await checkHelper(); });
     $("reviewList").addEventListener("click", onReviewClick);
     $("filter").addEventListener("change", renderReview);
-    for (const id of ["keepScratch", "muteScratch", "placeLow", "rate2", "fps", "res", "adapter", "cutStyle", "cutPace", "cutEffects", "cutColour", "cutLook"]) $(id).addEventListener("change", () => { persist(); render(); });
+    for (const id of ["keepScratch", "muteScratch", "placeLow", "rate2", "fps", "res", "adapter", "cutStyle", "cutPace", "cutEffects", "cutColour", "cutLook", "adTarget", "adTranscribe"]) $(id).addEventListener("change", () => { persist(); render(); });
     renderSelftest(selftest.last());
     renderCut(state.cut);
+    renderAdInputs();
+    renderAd(state.ad.result);
     render();
     checkHelper().then(async () => {
       if (state.helper === "ok" && state.jobId) {

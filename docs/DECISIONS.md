@@ -346,3 +346,25 @@ fails the build if any other file requires a relative module.
   FFmpeg agreement, 8-bit detection), helper and smoke 9/9. **Not verified:** thresholds on real
   footage; the frozen Windows build loading OpenCV without its FFmpeg DLL (the release smoke checks it).
 
+## D-027 Ad first cut from a script or storyboard
+
+- **Request (15 Nov 2026):** "also add the first cut of ad videos according to the script or the
+  storyboard in the same extension". No sample script was available, so the common formats from the
+  research are supported: CSV/XLSX shot list (template), DOCX AV script, FDX, TXT, storyboard PDF.
+- **Matching cascade:** take log (circled first) > file names > dialogue (RapidFuzz alignment over
+  whisper.cpp transcripts, numbers spelled out) > storyboard picture similarity (suggestion only).
+  Research: every existing tool is transcript-driven; none reads storyboards or MOS shots.
+- **Speech-to-text:** whisper.cpp via pywhispercpp (MIT code, MIT weights), models downloaded once
+  from the whisper.cpp model repository at a pinned revision and checked by SHA-256. faster-whisper
+  was rejected: it imports PyAV, whose wheels bundle GPL x264/x265 (research, verified on the wheel).
+- **Line timing:** Whisper's first word stretches back over leading silence and the last word over
+  trailing silence (seen on the simulated shoot: a line spoken at 1.5-2.9 s reported as 0.0-7.0 s).
+  Lines are pulled onto measured speech regions (level > clip noise floor + 12 dB), anchored on the
+  inner words, extending only across pauses up to 0.6 s.
+- **Length:** the running total is rounded to frames, so a target length is met to the frame;
+  dialogue and recorded VO are never shortened; an impossible target is reported, not faked.
+- **Verified:** tests/unit/test_ad.py, tests/helper/test_ad_api.py, helper smoke 11/11 (speech
+  library loads; ad cut via take log), a simulated shoot with spoken lines (macOS `say`, tiny.en):
+  5/6 shots matched (the 6th correctly missing), fumbled take skipped, circled take used, 15.0 s exact.
+  **Not verified:** real shoot material; Premiere importing the ad XML.
+

@@ -52,6 +52,8 @@ function setup() {
       return { clip: c };
     }),
     saveReport: rec("saveReport", { path: "C:/r.json" }),
+    adScript: rec("adScript", { shots: [{ kind: "mos" }, { kind: "dialogue" }, { kind: "vo" }], warnings: [] }),
+    adTemplate: rec("adTemplate", { path: "C:/t/AutoSync shot list template.csv" }),
     setToken: (t) => calls.push(["setToken", t]),
   };
   const seq = { guid: "G1" };
@@ -70,7 +72,11 @@ function setup() {
   const selftest = { run: rec("selftest.run", { count: 24, spikes: { a: { ok: true }, b: { ok: true, placed: 1, planned: 1, mismatches: 0, totalMs: 1 }, c: { ok: true, placed: 1, planned: 1, mismatches: 0, totalMs: 1 } }, engine: { gateFailures: [], withinOneFramePct: 100 }, defaultAdapter: "uxp" }), last: () => null };
   const store = new Map();
   const storage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
-  const lfs = { getFileForOpening: rec("pick", (o) => (o.allowMultiple ? [{ nativePath: "D:/shoot/takes/a.mov" }, { nativePath: "D:/shoot/takes/b.mov" }] : { nativePath: "D:/shoot/Song Master.wav" })) };
+  const lfs = {
+    getFileForOpening: rec("pick", (o) => (o.allowMultiple ? [{ nativePath: "D:/shoot/takes/a.mov" }, { nativePath: "D:/shoot/takes/b.mov" }]
+      : { nativePath: (o.types || []).includes("docx") ? "D:/ad/script.docx" : (o.types || []).length === 1 ? "D:/ad/log.csv" : "D:/shoot/Song Master.wav" })),
+    getFolder: rec("pickFolder", { nativePath: "C:/t" }),
+  };
   const doc = fakeDom();
   const common = createCommon({}, core, {});
   const cutOut = { sequence_name: "AutoSync Cut - S", xml_path: "C:/cut.xml", imported: true, sequenceGuid: "G2", tempo_bpm: 120,
@@ -78,6 +84,11 @@ function setup() {
   const firstcut = {
     make: rec("firstcut.make", () => Object.assign({}, cutOut)),
     preview: rec("firstcut.preview", { path: "C:/cut.preview.mp4", imported: true, note: null, sequenceName: "AutoSync Cut - S" }),
+    makeAd: rec("firstcut.makeAd", { jobId: "AD1", sequence_name: "AutoSync Ad - s", xml_path: "C:/ad.xml", imported: true,
+      stats: { shots: 3, matched: 2, suggested: 0, missing: ["3A"], seconds: 15, target_s: 15, circled_used: 1 },
+      shots: [{ shot_id: "1A", status: "matched", name: "1A_T2.mov", method: "file name", confidence: "medium", seconds: 3, reason: "file name take 2" },
+        { shot_id: "3A", status: "missing", name: null, method: "", confidence: "", seconds: 2, reason: "no take found" }], warnings: [] }),
+    adPreview: rec("firstcut.adPreview", { path: "C:/ad.preview.mp4", imported: true, note: null }),
     analyseShots: rec("firstcut.analyseShots", { state: "done", takes: [{ name: "a", size: "close", setup: "S1", faces: 1, face_detector: "yunet" }, { name: "b", size: "wide", setup: "S2", faces: 0.5, face_detector: "yunet" }] }),
   };
   const view = createView({ doc, core, api, pr, adapters, selftest, common, storage, lfs, firstcut, hostVersion: "26.5.0", setInterval: () => 0 });
@@ -142,6 +153,28 @@ test("each button performs its real operation", async () => {
   await click("cutPreview");
   assert.ok(names(calls).includes("firstcut.preview"));
   assert.match(doc.els.get("cutOut").innerHTML, /cut\.preview\.mp4/);
+  await click("adPickScript");
+  assert.strictEqual(view.state.ad.script, "D:/ad/script.docx");
+  assert.match(doc.els.get("adScriptInfo").innerHTML, /3 shots: 1 dialogue, 1 vo, 1 mos/);
+  await click("adPickTakelog");
+  assert.strictEqual(view.state.ad.takelog, "D:/ad/log.csv");
+  doc.els.get("adTarget").value = "15";
+  await click("makeAd");
+  const ad = calls.filter((c) => c[0] === "firstcut.makeAd");
+  assert.strictEqual(ad.length, 1);
+  assert.strictEqual(ad[0][1].script_path, "D:/ad/script.docx");
+  assert.strictEqual(ad[0][1].target_s, 15);
+  assert.strictEqual(ad[0][1].takelog_path, "D:/ad/log.csv");
+  assert.ok(ad[0][1].clip_paths.length >= 1 && ad[0][1].sequence.fps_num);
+  assert.match(doc.els.get("adOut").innerHTML, /Missing<\/span> 3A/);
+  await click("adPreview");
+  assert.ok(names(calls).includes("firstcut.adPreview"));
+  await click("adTemplate");
+  assert.ok(names(calls).includes("adTemplate"));
+  await click("adPickMusic");
+  await click("adPickVo");
+  await click("adClearExtras");
+  assert.strictEqual(view.state.ad.takelog, null);
   await click("selftestQuick");
   await click("selftestFull");
   assert.deepStrictEqual(calls.filter((c) => c[0] === "selftest.run").map((c) => c[1].count), [24, 200]);

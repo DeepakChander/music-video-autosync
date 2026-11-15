@@ -226,6 +226,56 @@ def _cmd_cut(a: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_ad(a: argparse.Namespace) -> int:
+    from export.ad_xml import ad_sequence_name, write_ad_xml
+
+    from .ad import AdSettings
+    from .adcut import AdCutError, run_ad_cut
+    from .script import ScriptError, write_template
+
+    if a.template:
+        print(write_template(a.template))
+        return 0
+    if not a.script or not a.clips:
+        print("error: --script and --clips are required (or --template FILE)", file=sys.stderr)
+        return 2
+    clips = []
+    for c in a.clips:
+        clips.extend(list_media(c) if os.path.isdir(c) else [c])
+    fps = parse_rate(a.fps)
+    out_dir = os.path.dirname(os.path.abspath(a.out or a.plan or a.preview or a.script))
+    cache = None if a.no_cache else (a.cache or default_cache_dir())
+    try:
+        cut = run_ad_cut(a.script, clips, fps, out_dir, takelog_path=a.takelog, music_path=a.music, vo_path=a.vo,
+                         settings=AdSettings(target_s=a.target), transcribe=not a.no_transcribe, model=a.model,
+                         cache_dir=cache, analyse_shots=a.analyse_shots,
+                         progress=None if a.quiet else (lambda ph, d, n, cur: print(f"{ph} {d}/{n} {cur}", file=sys.stderr)))
+    except (AdCutError, ScriptError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 3
+    plan = cut.plan
+    st = plan.stats
+    print(f"{st['matched']}/{st['shots']} shots matched, {st['suggested']} suggested, missing: "
+          f"{', '.join(st['missing']) or 'none'}; {st['seconds']} s" + (f" (target {st['target_s']:g} s)" if st['target_s'] else ""))
+    for s in plan.shots:
+        print(f"  {s.shot_id:6} {s.kind:9} {s.status:9} {(s.name or '-')[:28]:28} {s.method:18} {s.confidence:6} {s.reason}")
+    for w in plan.warnings:
+        print(f"warning: {w}", file=sys.stderr)
+    if a.plan:
+        with open(a.plan, "w", encoding="utf-8") as f:
+            f.write(plan.model_dump_json(indent=2))
+    name = a.name or ad_sequence_name(a.script, a.target)
+    if a.out:
+        info = write_ad_xml(plan, cut.clips, a.out, name, a.width, a.height, cut.music_s, cut.vo_s)
+        print(f"Wrote {info['path']}: sequence '{name}' (File > Import in Premiere)")
+    if a.preview:
+        from export.preview import render_ad_preview
+        info = render_ad_preview(plan, {c.clip_id: c.path for c in cut.clips}, a.preview, width=a.preview_width,
+                                 height=int(round(a.preview_width * a.height / a.width / 2)) * 2)
+        print(f"Wrote {info['path']} ({info['width']}x{info['height']}, {info['encoder']})")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="autosync-engine", description="Music Video AutoSync engine")
     p.add_argument("--version", action="version", version=__version__)
@@ -298,6 +348,30 @@ def build_parser() -> argparse.ArgumentParser:
     cu.add_argument("--no-cache", action="store_true")
     cu.add_argument("--quiet", action="store_true")
     cu.set_defaults(func=_cmd_cut)
+
+    ad = sub.add_parser("ad", help="ad first cut from a script / storyboard / shot list")
+    ad.add_argument("--script", help=".csv/.xlsx shot list, .docx AV script, .fdx, .txt or storyboard .pdf")
+    ad.add_argument("--clips", nargs="*", default=[], help="footage files and/or folders")
+    ad.add_argument("--fps", default="25", help="sequence frame rate, e.g. 25 or 24000/1001")
+    ad.add_argument("--width", type=int, default=1920)
+    ad.add_argument("--height", type=int, default=1080)
+    ad.add_argument("--target", type=float, help="spot length in seconds (15, 30, 60...)")
+    ad.add_argument("--takelog", help="take log CSV: clip, shot, take, circled, notes")
+    ad.add_argument("--music", help="music bed (cuts of picture-only shots snap to its beats)")
+    ad.add_argument("--vo", help="VO recording (VO shots last as long as their line)")
+    ad.add_argument("--model", default="base.en", choices=["tiny.en", "base.en", "small.en"], help="speech model")
+    ad.add_argument("--no-transcribe", action="store_true", help="match by take log / file names only")
+    ad.add_argument("--analyse-shots", action="store_true", help="pick the best-looking part of picture-only takes")
+    ad.add_argument("--out", help="the .xml file to write (File > Import in Premiere)")
+    ad.add_argument("--name")
+    ad.add_argument("--plan", help="write the ad plan JSON here")
+    ad.add_argument("--preview", help="render a preview .mp4 here")
+    ad.add_argument("--preview-width", type=int, default=1280)
+    ad.add_argument("--template", help="write the shot-list template CSV here and stop")
+    ad.add_argument("--cache")
+    ad.add_argument("--no-cache", action="store_true")
+    ad.add_argument("--quiet", action="store_true")
+    ad.set_defaults(func=_cmd_ad)
 
     dr = sub.add_parser("doctor", help="check that FFmpeg is available")
     dr.set_defaults(func=_cmd_doctor)

@@ -1,6 +1,6 @@
 """Music Video AutoSync sync engine. Pure Python: no Premiere code, no network sockets."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 # Bump whenever the analysis algorithm changes in a way that changes results. It is part of every
 # cache key, so a cached clip result is never reused across algorithm changes.

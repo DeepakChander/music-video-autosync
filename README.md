@@ -7,8 +7,12 @@ ever guessed.
 
 Then it edits: the **first cut** cuts between the synced takes on the beat of the song, with a new
 shot at every section, pacing by style (performance, performance + story, hype, ballad), story
-footage in verses and breaks, section markers, optional punch-ins/flashes/dissolves and a preview
-video (docs/EDIT_DESIGN.md).
+footage in verses and breaks, section markers, optional punch-ins/flashes/dissolves, shot analysis
+(faces, framing, sharpness), colour match and looks, and a preview video (docs/EDIT_DESIGN.md).
+
+For commercials, the **ad first cut** assembles the footage in the order of a script, storyboard or
+shot list: takes found by take log, file names and the spoken lines, best take per shot, target
+length to the frame, missing shots marked (docs/AD_GUIDE.md).
 
 It is signal processing (MFCC cross-correlation + GCC-PHAT), not machine learning.
 
@@ -65,4 +69,4 @@ Tests: `.venv/bin/python -m pytest` (FFmpeg required for the end-to-end tests).
 ## Docs
 
 `docs/CLIENT_SMOKE_TEST.md` (Windows, start here) · `docs/MAC_GUIDE.md` (Mac) · `docs/INSTALL.md` · `docs/USER_GUIDE.md` ·
-`docs/LIMITATIONS.md` · `docs/DECISIONS.md` · `docs/LICENSES.md` · `docs/PREMIERE_API_NOTES.md`
+`docs/AD_GUIDE.md` · `docs/LIMITATIONS.md` · `docs/DECISIONS.md` · `docs/LICENSES.md` · `docs/PREMIERE_API_NOTES.md`
