@@ -10,14 +10,14 @@
 #   ./scripts/setup_mac_https.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# shellcheck source=lib_mac.sh
+. scripts/lib_mac.sh
+use_brew || true  # Homebrew installed but not on PATH yet: use it anyway
 
 if ! command -v mkcert >/dev/null 2>&1; then
-  if command -v brew >/dev/null 2>&1; then
-    echo "Installing mkcert with Homebrew..."
-    brew install mkcert
-  else
-    echo "mkcert is needed. Install Homebrew (https://brew.sh), then: brew install mkcert"; exit 1
-  fi
+  ensure_brew mkcert || { echo "mkcert is needed (Homebrew installs it)."; exit 1; }
+  echo "Installing mkcert with Homebrew..."
+  "$BREW" install mkcert
 fi
 if [ ! -x .venv/bin/python ]; then
   echo "Run ./scripts/setup_mac.sh first."; exit 1

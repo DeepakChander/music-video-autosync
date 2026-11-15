@@ -270,5 +270,21 @@ fails the build if any other file requires a relative module.
 - **Verified on macOS:** fresh clone, `setup_mac.sh`, helper over http and over https (certificate
   verified), helper smoke 7/7, Plan B commands. **Not verified:** Premiere on a Mac accepting the
   certificate; the panel in Premiere on a Mac.
-- **What would change it:** the tester's step 9 result. If Premiere rejects the local certificate,
+- **What would change it:** the tester's step 8 result (MAC_GUIDE numbering). If Premiere rejects the local certificate,
   Plan B becomes the documented Mac route until another transport is proven.
+
+## D-023 macOS setup installs its own prerequisites
+
+- **Context:** the first Mac tester ran `setup_mac.sh` on a Mac with no Homebrew, FFmpeg or Python
+  3.11 (macOS ships Python 3.9). The script stopped and pointed at https://brew.sh, which a
+  non-developer cannot act on.
+- **Choice:** `setup_mac.sh` installs whatever is missing with Homebrew (`ffmpeg`, `python@3.11`);
+  `setup_mac_https.sh` does the same for `mkcert`. When Homebrew itself is missing, the script asks
+  before running Homebrew's official installer (only in an interactive Terminal; otherwise it prints
+  the command). Homebrew is found at `/opt/homebrew` or `/usr/local` even when it is not on the
+  window's PATH yet, and the line Homebrew's "Next steps" ask for is added to `~/.zprofile` once.
+  `engine.probe.find_tool` also looks in those two folders on macOS, so Plan B works from any window.
+- **Verified:** a fresh clone run with PATH limited to the macOS system folders, using stand-ins for
+  the Homebrew installer and `brew install`: answering no (and no terminal) stops without installing;
+  answering yes installs, finishes setup, and a helper started from such a window passes the 14-clip
+  smoke 7/7. **Not verified:** the real Homebrew installer on a Mac without Homebrew.

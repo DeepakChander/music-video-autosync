@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 import pytest
@@ -66,3 +67,26 @@ def test_clean_message_strips_addresses_on_every_platform():
     assert clean_message("[mov,mp4 @ 0x7480c10000] moov atom not found") == "[mov,mp4] moov atom not found"
     # Windows builds print the pointer without 0x (seen on the windows-latest CI runner)
     assert clean_message("[mov,mp4,m4a @ 000001f78e73de00] moov atom not found") == "[mov,mp4,m4a] moov atom not found"
+
+
+def test_find_tool_falls_back_to_homebrew_dirs(tmp_path, monkeypatch):
+    """macOS: Homebrew's bin folder is not on PATH right after installing Homebrew."""
+    from engine import probe
+
+    exe = "ffprobe" + (".exe" if os.name == "nt" else "")
+    monkeypatch.setattr(probe, "_candidate_dirs", lambda: [])
+    monkeypatch.setattr(probe.shutil, "which", lambda name: None)
+    monkeypatch.setattr(probe, "_homebrew_dirs", lambda: [str(tmp_path)])
+    with pytest.raises(probe.FFmpegNotFound):
+        probe.find_tool("ffprobe")
+    (tmp_path / exe).write_bytes(b"")
+    assert probe.find_tool("ffprobe") == os.path.join(str(tmp_path), exe)
+
+
+def test_homebrew_dirs_only_on_macos(monkeypatch):
+    from engine import probe
+
+    monkeypatch.setattr(probe.sys, "platform", "darwin")
+    assert probe._homebrew_dirs() == ["/opt/homebrew/bin", "/usr/local/bin"]
+    monkeypatch.setattr(probe.sys, "platform", "win32")
+    assert probe._homebrew_dirs() == []

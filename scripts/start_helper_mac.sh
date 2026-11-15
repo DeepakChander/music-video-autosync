@@ -3,6 +3,9 @@
 #   ./scripts/start_helper_mac.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# shellcheck source=lib_mac.sh
+. scripts/lib_mac.sh
+use_brew || true  # FFmpeg from Homebrew, even if Homebrew is not on this window's PATH
 if [ ! -x .venv/bin/python ]; then
   echo "Run ./scripts/setup_mac.sh first."; exit 1
 fi

@@ -37,6 +37,10 @@ def _candidate_dirs() -> list[str]:
     return dirs
 
 
+def _homebrew_dirs() -> list[str]:
+    return ["/opt/homebrew/bin", "/usr/local/bin"] if sys.platform == "darwin" else []
+
+
 def find_tool(name: str) -> str:
     exe = name + (".exe" if os.name == "nt" else "")
     for d in _candidate_dirs():
@@ -46,6 +50,10 @@ def find_tool(name: str) -> str:
     found = shutil.which(name)
     if found:
         return found
+    for d in _homebrew_dirs():  # macOS: Homebrew installed but not on this shell's PATH
+        p = os.path.join(d, exe)
+        if os.path.isfile(p):
+            return p
     raise FFmpegNotFound(f"{name} not found (set AUTOSYNC_FFMPEG_DIR or install FFmpeg)")
 
 

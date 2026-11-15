@@ -1,69 +1,77 @@
 # Music Video AutoSync on a Mac (run from the Git repository)
 
-You clone the project, run one setup script, start the helper in a Terminal window, and use the
-panel inside Premiere Pro. If the panel cannot connect on your Mac, a command-line route (Plan B
-below) does the same sync and gives you a sequence to import with File > Import.
+You clone the project, run one setup script (it installs anything missing), start the helper in
+a Terminal window, and use the panel inside Premiere Pro. If the panel cannot connect on your Mac,
+a command-line route (Plan B below) does the same sync and gives you a sequence to import with
+File > Import.
 
 ## What has been checked on a Mac, and what has not
 
 | | Status |
 |---|---|
 | Fresh clone, `setup_mac.sh`, helper start (http and https), self-test analysis: 100% of test takes within 1 frame | Checked on macOS (Apple Silicon, Python 3.11) |
+| `setup_mac.sh` on a Mac with no Homebrew, FFmpeg or Python: offers Homebrew, installs FFmpeg and Python 3.11, finishes | Checked with stand-ins for the Homebrew installer and `brew install`; the real Homebrew installer runs on your Mac |
 | Plan B: analyse, report, XML export from the command line | Checked on macOS |
-| The panel inside Premiere Pro on a Mac | **Not checked** (no Premiere on the build machine). Step 9 checks it on your Mac |
+| The panel inside Premiere Pro on a Mac | **Not checked** (no Premiere on the build machine). Step 8 checks it on your Mac |
 | Premiere on a Mac accepting the helper's local HTTPS certificate | **Not checked**. Premiere blocks plain `http://` on macOS (Adobe's Premiere UXP network guide), so the helper uses HTTPS on your Mac |
 | Premiere importing the XML from Plan B | **Not checked** in Premiere yet (it is the standard Final Cut Pro 7 XML format) |
 
-Please send back what you see in steps 6 and 9, whether or not it works.
+Please send back what you see in steps 5 and 8, whether or not it works.
 
 ## You need
 
-- A Mac (Apple Silicon or Intel) with a recent macOS
+- A Mac (Apple Silicon or Intel) with a recent macOS, an internet connection, and your Mac
+  password (installing Homebrew needs an administrator account)
 - Adobe Premiere Pro **26.2 or later** and the Creative Cloud app
-- [Homebrew](https://brew.sh) (the standard Mac package manager)
 - Access to the private GitHub repository `DeepakChander/music-video-autosync`:
   send Deepak your GitHub username, then accept the invitation email
 
-## Step 1. Install the tools (once)
+You do not need to install FFmpeg, Python or Homebrew yourself: step 2 does it.
+
+## Step 1. Get the code
 
 Open **Terminal** (Applications > Utilities) and run:
 
 ```bash
-brew install ffmpeg python@3.11 mkcert gh
-gh auth login            # choose GitHub.com, HTTPS, "Login with a web browser"
-```
-
-## Step 2. Get the code
-
-```bash
-cd ~/Documents
-gh repo clone DeepakChander/music-video-autosync
+cd ~/Desktop
+git clone https://github.com/DeepakChander/music-video-autosync.git
 cd music-video-autosync
 ```
 
-(`git clone https://github.com/DeepakChander/music-video-autosync.git` works too after `gh auth login`.)
+The first time you use `git`, macOS may offer to install the Command Line Tools: click
+**Install**, wait, then run the commands again.
 
-## Step 3. Set up (once, 2 to 5 minutes)
+## Step 2. Set up (once, 5 to 20 minutes)
 
 ```bash
 ./scripts/setup_mac.sh
 ```
 
-It checks FFmpeg and Python, installs the Python packages into a private `.venv` folder,
-creates the pairing token and builds the panel file. It ends with **Setup finished.**
+What it does, in order:
 
-## Step 4. Turn on HTTPS for the panel (once)
+1. Checks for FFmpeg and Python 3.11. If either is missing it uses Homebrew, the standard Mac
+   package manager, to install it.
+2. If Homebrew is not installed, it asks **Install Homebrew now? [Y/n]**. Press **Return**.
+   Homebrew asks for your Mac password (nothing appears while you type; that is normal) and asks
+   you to press **Return** again. It can take 5 to 15 minutes the first time.
+3. Installs the Python packages into a private `.venv` folder, creates the pairing token and
+   builds the panel file.
+
+It ends with **Setup finished.** If it stops with a message, do what the message says and run
+`./scripts/setup_mac.sh` again: it is safe to run again and skips what is already done.
+
+## Step 3. Turn on HTTPS for the panel (once)
 
 ```bash
 ./scripts/setup_mac_https.sh
 ```
 
-macOS asks for your password once. The script creates a small certificate authority that exists
-only on your Mac, trusts it in your keychain, and makes a certificate that is valid only for
-`127.0.0.1` and `localhost`. That lets the Premiere panel talk to the helper over HTTPS, which
-Premiere requires on macOS. (Undo: see "Remove everything" at the end.)
+macOS asks for your password once. The script installs `mkcert`, creates a small certificate
+authority that exists only on your Mac, trusts it in your keychain, and makes a certificate that
+is valid only for `127.0.0.1` and `localhost`. That lets the Premiere panel talk to the helper
+over HTTPS, which Premiere requires on macOS. (Undo: see "Remove everything" at the end.)
 
-## Step 5. Start the helper (every time you use the panel)
+## Step 4. Start the helper (every time you use the panel)
 
 ```bash
 ./scripts/start_helper_mac.sh
@@ -73,18 +81,18 @@ Wait for **Application startup complete.** The first line should show
 `https://127.0.0.1:47653`. **Keep this Terminal window open** while you work; Ctrl+C stops the
 helper. The helper only listens on your own Mac and never uploads anything.
 
-## Step 6. Check the helper (1 minute, optional but useful)
+## Step 5. Check the helper (1 minute, optional but useful)
 
 Open a second Terminal tab (Cmd+T), go to the same folder, and run:
 
 ```bash
-cd ~/Documents/music-video-autosync
+cd ~/Desktop/music-video-autosync
 .venv/bin/python tools/helper_smoke.py --count 14
 ```
 
 Expected: **7/7 checks passed**. This proves the analysis works on your Mac without Premiere.
 
-## Step 7. Install the panel in Premiere
+## Step 6. Install the panel in Premiere
 
 ```bash
 open packaging/out
@@ -98,7 +106,7 @@ Developer alternative: Premiere > Settings > Plugins > **Enable developer mode**
 Premiere). Then, in the **UXP Developer Tool** from the Creative Cloud app, click **Add Plugin**,
 choose `panel/manifest.json` and click **Load**.
 
-## Step 8. Connect
+## Step 7. Connect
 
 The light at the top right of the panel:
 
@@ -106,9 +114,9 @@ The light at the top right of the panel:
 |---|---|
 | Green: Helper connected | Nothing, you are ready |
 | Amber: Helper needs pairing | In Terminal: `.venv/bin/python -m helper print-token`, copy the line, paste it into the panel, **Save** |
-| Red: Helper not running | Is the step 5 window still open and showing `https://`? If it shows `http://`, run step 4 and restart the helper. Still red: use Plan B and tell us |
+| Red: Helper not running | Is the step 4 window still open and showing `https://`? If it shows `http://`, run step 3 and restart the helper. Still red: use Plan B and tell us |
 
-## Step 9. Quick test inside Premiere (5 minutes)
+## Step 8. Quick test inside Premiere (5 minutes)
 
 Create a **new empty project** (the test adds bins and sequences). In the panel, scroll to
 **Placement self-test** and click **Run quick test (24 clips)**.
@@ -125,7 +133,7 @@ Expected results:
 Open the new **AutoSync Self-test ...** sequences: the song is on A1 from the start, the takes
 are on V1, V2, V3..., and each take's own audio is on muted tracks below.
 
-## Step 10. Use it on a real music video
+## Step 9. Use it on a real music video
 
 Work on a copy of your project (File > Save As...). Then, in the panel, from top to bottom:
 
@@ -152,7 +160,7 @@ Use this if the panel cannot connect, or if you prefer the command line. The hel
 need to be running.
 
 ```bash
-cd ~/Documents/music-video-autosync
+cd ~/Desktop/music-video-autosync
 
 # 1. Analyse: the song, then a folder of takes (or individual files)
 .venv/bin/python -m engine.cli analyze \
@@ -180,35 +188,38 @@ Mute the camera-audio tracks (A2 and up) with their track headers.
 | 29.97 | `30000/1001` |
 | 59.94 | `60000/1001` |
 
-Options for step 3: `--place-low` also places LOW takes; `--no-scratch` leaves the camera audio
+Options for command 3 (the XML): `--place-low` also places LOW takes; `--no-scratch` leaves the camera audio
 out. Drag a folder from Finder into Terminal to type its path.
 
 ## Updating to a newer version
 
 ```bash
-cd ~/Documents/music-video-autosync
+cd ~/Desktop/music-video-autosync
 git pull
 ./scripts/setup_mac.sh
 ```
 
-If the panel changed, install the new `.ccx` again (step 7).
+If the panel changed, install the new `.ccx` again (step 6).
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| `Setup stopped: FFmpeg is not installed` | `brew install ffmpeg`, then run the script again |
-| `Python 3.11 to 3.13 is not installed` | `brew install python@3.11`, then run the script again |
+| `git clone` says "Repository not found" | Your GitHub account has no access yet: send Deepak your username and accept GitHub's invitation email |
+| `git clone` asks for a password | GitHub wants a personal access token, not your account password (github.com > Settings > Developer settings > Personal access tokens) |
+| `Setup stopped: FFmpeg is not installed` (an older copy of the script) | `git pull`, then `./scripts/setup_mac.sh` again: it now installs FFmpeg and Python itself |
+| Homebrew says you need `sudo` access | Your Mac account is not an administrator. Log in as an administrator, or ask the Mac's owner to run step 2 |
+| `zsh: command not found: brew` in a new window | Close Terminal and open it again (setup added Homebrew to `~/.zprofile`). The AutoSync scripts find Homebrew either way |
 | `permission denied: ./scripts/...` | `chmod +x scripts/*.sh` |
 | `port 47653 is already in use` | A helper is already running in another Terminal window; use it or close it |
-| `helper_smoke.py` says the helper is not reachable | Start it first (step 5) and wait for "Application startup complete." |
+| `helper_smoke.py` says the helper is not reachable | Start it first (step 4) and wait for "Application startup complete." |
 | The panel shows red, but the helper runs with `https://` | Premiere may not accept the local certificate. Use Plan B, and send us a screenshot plus the panel's error from UXP Developer Tool > Debug |
 | A take is UNSYNCED / DECODE_ERROR | FFmpeg cannot read its audio (some RAW formats). Place it by hand in Review (type a timecode, click **Set**) |
 
 ## What to send back
 
-- The output of step 6 (copy it from Terminal)
-- Screenshots of the panel's self-test results (step 9) and of a draft timeline
+- The output of step 5 (copy it from Terminal)
+- Screenshots of the panel's self-test results (step 8) and of a draft timeline
 - The helper's Terminal window text if anything failed, or the log at
   `~/Library/Application Support/MusicVideoAutoSync/logs/helper.log`
 - For Plan B: `sync_result.json` and the report text
@@ -217,7 +228,7 @@ If the panel changed, install the new `.ccx` again (step 7).
 
 | What | Where |
 |---|---|
-| The code | the folder you cloned (for example `~/Documents/music-video-autosync`) |
+| The code | the folder you cloned (for example `~/Desktop/music-video-autosync`) |
 | Token, settings, certificate, logs | `~/Library/Application Support/MusicVideoAutoSync` |
 | Analysis cache, jobs, results, reports | `~/Library/Caches/MusicVideoAutoSync/cache` |
 
@@ -228,5 +239,8 @@ If the panel changed, install the new `.ccx` again (step 7).
 2. Delete the cloned folder.
 3. Delete the data: `rm -rf ~/Library/Application\ Support/MusicVideoAutoSync ~/Library/Caches/MusicVideoAutoSync`
 4. Remove the local certificate authority: `mkcert -uninstall`
+
+Homebrew, FFmpeg, Python and mkcert stay installed (other apps can use them). To remove them too:
+`brew uninstall ffmpeg python@3.11 mkcert`.
 
 Your footage, songs and Premiere projects are never changed by any of this.
