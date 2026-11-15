@@ -127,10 +127,12 @@ def test_xml_carries_the_plan(shoot):
 
 
 @needs_ffmpeg
-def test_preview_with_luts_in_a_folder_with_an_apostrophe_and_a_colon(shoot, tmp_path):
+def test_preview_with_luts_in_a_folder_with_an_apostrophe(shoot, tmp_path):
+    """A user folder like "Sarah's footage" (and, on Windows, every drive letter's colon) must not
+    break the FFmpeg filter. Windows forbids ':' in folder names, so only the apostrophe is made here."""
     from engine.colour import build_lut, write_cube
     d, res, mm = shoot
-    odd = tmp_path / "it's: a folder"
+    odd = tmp_path / "it's a folder"
     odd.mkdir()
     lut = write_cube(str(odd / "warm.cube"), build_lut(None, "warm", 9), "warm")
     plan = build_plan(res, mm, EditSettings(style="performance", effects=False))
