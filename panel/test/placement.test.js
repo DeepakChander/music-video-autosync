@@ -236,3 +236,29 @@ test("helper client falls back to https when http is refused (macOS) and remembe
   const down = createApi({ token: "t", fetch: async () => { throw new TypeError("refused"); } });
   await assert.rejects(down.health(), (e) => e.code === "HELPER_DOWN" && /https:\/\/localhost/.test(e.message));
 });
+
+test("use selected project items: bins contribute their clips, and the selected count is reported", async () => {
+  const { fake, pr } = setup();
+  const { ppro, project } = fake;
+  const info = { durationTicks: core.secondsToTicks(10), hasVideo: true, hasAudio: true };
+  const clip = (p) => new ppro.ClipProjectItem(p, info);
+  const bin = new ppro.FolderItem("Takes");
+  const sub = new ppro.FolderItem("Day 2");
+  const a = clip("/Volumes/Shoot/a.mov");
+  const b = clip("/Volumes/Shoot/day2/b.mov");
+  const c = clip("/Volumes/Shoot/c.mov");
+  bin.children.push(a, sub);
+  sub.children.push(b);
+  project.root.children.push(bin, c);
+
+  project.selection = [bin, c, a]; // a is also inside the bin: listed once
+  const r = await pr.selectedMediaPaths(project);
+  assert.deepStrictEqual(r.paths.slice().sort(), ["/Volumes/Shoot/a.mov", "/Volumes/Shoot/c.mov", "/Volumes/Shoot/day2/b.mov"]);
+  assert.strictEqual(r.selected, 3);
+
+  project.selection = [];
+  assert.deepStrictEqual(await pr.selectedMediaPaths(project), { paths: [], selected: 0 });
+
+  project.selection = [new ppro.FolderItem("Empty bin")];
+  assert.deepStrictEqual(await pr.selectedMediaPaths(project), { paths: [], selected: 1 });
+});

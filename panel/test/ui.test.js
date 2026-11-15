@@ -57,7 +57,7 @@ function setup() {
   const seq = { guid: "G1" };
   const pr = {
     activeProject: rec("activeProject", {}),
-    selectedMediaPaths: rec("selectedMediaPaths", ["D:/shoot/takes/sel.mov"]),
+    selectedMediaPaths: rec("selectedMediaPaths", { paths: ["D:/shoot/takes/sel.mov"], selected: 1 }),
     findSequence: rec("findSequence", seq),
     openSequence: rec("openSequence", true),
   };

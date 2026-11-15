@@ -288,3 +288,16 @@ fails the build if any other file requires a relative module.
   the Homebrew installer and `brew install`: answering no (and no terminal) stops without installing;
   answering yes installs, finishes setup, and a helper started from such a window passes the 14-clip
   smoke 7/7. **Not verified:** the real Homebrew installer on a Mac without Homebrew.
+
+## D-024 Panel 0.1.1: the panel scrolls; a selected bin counts as its clips
+
+- **Evidence:** the first Mac tester's screenshot (Premiere on macOS, 15 Nov 2026): the panel showed
+  **Helper connected** (so the HTTPS route of D-022 reaches the helper), but the panel did not
+  scroll, and **Use selected project items** failed with "Select clips in the Project panel first".
+- **Choice:** `body { height: 100vh; overflow-y: auto; }`, the rule Adobe's Premiere sample panel
+  `metadata-handler/styles.css` uses. A selected bin contributes every clip inside it (sub-bins
+  included, each file once). When nothing usable is found, the message says how many items Premiere
+  reported as selected, which separates "nothing selected" from "selection not readable".
+- **Verified:** panel tests against the simulated Premiere (19 pass, one new). **Not verified:**
+  scrolling and selection in the real Premiere; the tester's next run checks both.
+- The panel version is 0.1.1 so Creative Cloud installs the new `.ccx` over the old one.

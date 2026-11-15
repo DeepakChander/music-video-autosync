@@ -12,8 +12,8 @@ File > Import.
 | Fresh clone, `setup_mac.sh`, helper start (http and https), self-test analysis: 100% of test takes within 1 frame | Checked on macOS (Apple Silicon, Python 3.11) |
 | `setup_mac.sh` on a Mac with no Homebrew, FFmpeg or Python: offers Homebrew, installs FFmpeg and Python 3.11, finishes | Checked with stand-ins for the Homebrew installer and `brew install`; the real Homebrew installer runs on your Mac |
 | Plan B: analyse, report, XML export from the command line | Checked on macOS |
-| The panel inside Premiere Pro on a Mac | **Not checked** (no Premiere on the build machine). Step 8 checks it on your Mac |
-| Premiere on a Mac accepting the helper's local HTTPS certificate | **Not checked**. Premiere blocks plain `http://` on macOS (Adobe's Premiere UXP network guide), so the helper uses HTTPS on your Mac |
+| Placing clips with the panel in Premiere on a Mac | **Not checked yet**. Step 8 checks it on your Mac |
+| The panel in Premiere on a Mac reaching the helper | **Checked** on a tester's Mac (15 Nov 2026): the panel showed **Helper connected** after steps 3 and 4. Premiere blocks plain `http://` on macOS (Adobe's Premiere UXP network guide), so the helper uses HTTPS |
 | Premiere importing the XML from Plan B | **Not checked** in Premiere yet (it is the standard Final Cut Pro 7 XML format) |
 
 Please send back what you see in steps 5 and 8, whether or not it works.
@@ -138,8 +138,8 @@ are on V1, V2, V3..., and each take's own audio is on muted tracks below.
 Work on a copy of your project (File > Save As...). Then, in the panel, from top to bottom:
 
 1. **Master audio**: **Select master...** (the song), then **Analyse Music**.
-2. **Footage**: **Import files...** (select many takes), or select clips in the Project panel
-   and click **Use selected project items**.
+2. **Footage**: **Import files...** (select many takes), or click your clips, or the bin that holds
+   them, in Premiere's Project panel and then click **Use selected project items**.
 3. **Sync settings**: set **Sequence** to your timeline's frame rate and size.
 4. **Analyse All Clips**, and watch Progress.
 5. **GENERATE FIRST DRAFT**. **Draft ready and verified** means Premiere confirmed every clip's
@@ -212,6 +212,7 @@ If the panel changed, install the new `.ccx` again (step 6).
 | `zsh: command not found: brew` in a new window | Close Terminal and open it again (setup added Homebrew to `~/.zprofile`). The AutoSync scripts find Homebrew either way |
 | `permission denied: ./scripts/...` | `chmod +x scripts/*.sh` |
 | `port 47653 is already in use` | A helper is already running in another Terminal window; use it or close it |
+| The panel does not scroll, or **Use selected project items** ignores a selected bin | That was panel 0.1.0. Update (see "Updating to a newer version") and install the new `.ccx`; the panel's About line shows **Panel 0.1.1** |
 | `helper_smoke.py` says the helper is not reachable | Start it first (step 4) and wait for "Application startup complete." |
 | The panel shows red, but the helper runs with `https://` | Premiere may not accept the local certificate. Use Plan B, and send us a screenshot plus the panel's error from UXP Developer Tool > Debug |
 | A take is UNSYNCED / DECODE_ERROR | FFmpeg cannot read its audio (some RAW formats). Place it by hand in Review (type a timecode, click **Set**) |

@@ -239,17 +239,30 @@ function createPremiere(ppro, core, log) {
   }
 
   // ProjectUtils.getSelection(project): Promise<ProjectItemSelection>; selection.getItems() (notes 13.1)
+  // A selected bin contributes every clip inside it (sub-bins included). Returns the media paths
+  // and how many items Premiere reported as selected, so an empty result can say which case it is.
   async function selectedMediaPaths(project) {
     const sel = await ppro.ProjectUtils.getSelection(project);
     const items = sel ? await sel.getItems() : [];
-    const paths = [];
+    const found = new Map();
     for (const it of items) {
       const clip = ppro.ClipProjectItem.cast(it);
-      if (!clip) continue;
-      const p = await clip.getMediaFilePath();
-      if (p) paths.push(p);
+      if (clip) {
+        let p = "";
+        try { p = await clip.getMediaFilePath(); } catch (e) { p = ""; }
+        if (p && !found.has(core.normPath(p))) found.set(core.normPath(p), p);
+        continue;
+      }
+      const f = ppro.FolderItem.cast(it);
+      if (f) {
+        for (const c of (await walkClips(f)).values()) {
+          let p = "";
+          try { p = await c.getMediaFilePath(); } catch (e) { p = ""; }
+          if (p && !found.has(core.normPath(p))) found.set(core.normPath(p), p);
+        }
+      }
     }
-    return paths;
+    return { paths: [...found.values()], selected: items.length };
   }
 
   return {

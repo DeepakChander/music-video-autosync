@@ -46,8 +46,8 @@ What the product cannot do, or has not proven yet, and the working alternative f
 | Limit | Effect | Working alternative |
 |---|---|---|
 | No Mac installer; no tray app | Clone the repository, run `scripts/setup_mac.sh`, keep `scripts/start_helper_mac.sh` running in a Terminal window | - |
-| Premiere disallows `http://` URLs on macOS (Adobe's Premiere UXP network recipe) | The helper serves HTTPS with a certificate from a local mkcert authority (`scripts/setup_mac_https.sh`); the panel tries http, then https. Whether Premiere accepts that certificate is **not verified** | Plan B: `engine.cli analyze` + `engine.cli report` + `python -m export.fcp7_xml`, then File > Import in Premiere |
-| The panel inside Premiere on a Mac | **Not verified** (no Premiere on the build machine) | The panel's placement self-test checks it on the Mac |
+| Premiere disallows `http://` URLs on macOS (Adobe's Premiere UXP network recipe) | The helper serves HTTPS with a certificate from a local mkcert authority (`scripts/setup_mac_https.sh`); the panel tries http, then https. On a tester's Mac (15 Nov 2026) the panel showed **Helper connected** | Plan B: `engine.cli analyze` + `engine.cli report` + `python -m export.fcp7_xml`, then File > Import in Premiere |
+| Placement by the panel inside Premiere on a Mac | **Not verified yet** (the connection is; placement is not) | The panel's placement self-test checks it on the Mac |
 
 ## Distribution limits
 

@@ -116,7 +116,7 @@ function createView(deps) {
       banner(null);
     }
     const h = state.health;
-    $("about").innerHTML = `Panel 0.1.0 · Premiere ${esc(hostVersion || "?")}` +
+    $("about").innerHTML = `Panel 0.1.1 · Premiere ${esc(hostVersion || "?")}` +
       (h ? ` · Helper ${esc(h.version)} · Engine ${esc(h.engine_version)}<br>Cache: ${esc(h.cache_dir)}` : "");
   }
 
@@ -154,8 +154,11 @@ function createView(deps) {
 
   async function useSelection() {
     const project = await pr.activeProject();
-    const paths = await pr.selectedMediaPaths(project);
-    if (!paths.length) throw new Error("Select clips in the Project panel first (bins are not expanded).");
+    const { paths, selected } = await pr.selectedMediaPaths(project);
+    if (!paths.length) {
+      if (!selected) throw new Error("Premiere reports nothing selected in the Project panel. Click your clips there (or the bin that holds them), then click this button again. Or use Import files… to pick the files.");
+      throw new Error(`Premiere reports ${selected} selected item(s) in the Project panel, but none is a media file. Select video clips or the bin that holds them, or use Import files….`);
+    }
     await setFootage(paths);
   }
 
