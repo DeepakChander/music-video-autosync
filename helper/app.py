@@ -94,6 +94,13 @@ class CutReq(_Strict):
     sequence_name: Optional[str] = None
     preview: bool = False
     preview_width: int = Field(1280, ge=320, le=3840)
+    colour: bool = False
+    look: str = Field("none", pattern="^(none|warm|cool|teal_orange|bw_contrast|film_fade)$")
+    hero_clip_id: Optional[str] = None
+
+
+class ShotsReq(_Strict):
+    faces: bool = True
 
 
 def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> FastAPI:
@@ -247,30 +254,108 @@ def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> Fas
         _res, mm = _music(job_id)
         return mm.model_dump(mode="json")
 
+    shot_jobs: dict[str, dict] = {}
+    shots_lock = threading.Lock()
+
+    def _shots_path(job_id: str) -> str:
+        return os.path.join(jobs.job_dir(job_id), "shots.json")
+
+    def _load_shots(job_id: str):
+        from engine.shots import ShotsReport
+        p = _shots_path(job_id)
+        if not os.path.isfile(p):
+            return None
+        with open(p, encoding="utf-8") as f:
+            return ShotsReport.model_validate_json(f.read())
+
+    def _shots_summary(job_id: str, rep) -> list[dict]:
+        names = {c.clip_id: c.name for c in jobs.result(job_id).clips}
+        rows = []
+        for cid, t in sorted(rep.takes.items(), key=lambda kv: names.get(kv[0], kv[0])):
+            faces = sum(1 for x in t.samples if x.faces) / max(1, len(t.samples))
+            rows.append({"clip_id": cid, "name": names.get(cid, cid), "size": t.size, "setup": rep.setups.get(cid),
+                         "faces": round(faces, 3), "face_detector": t.face_detector, "error": t.error})
+        return rows
+
+    @app.post("/jobs/{job_id}/shots")
+    def start_shots(job_id: str, req: ShotsReq):
+        """Analyse the pictures of every video clip in the background (faces, shot size, sharpness,
+        exposure, camera setups, colour). Cached per clip."""
+        from engine.shots import analyse_takes
+        res = jobs.result(job_id)
+        clips = [(c.clip_id, c.path) for c in res.clips if c.source_fps]
+        if not clips:
+            raise JobError("NO_VIDEO", "No clip with a picture in this job", 409)
+        with shots_lock:
+            if shot_jobs.get(job_id, {}).get("state") == "running":
+                raise JobError("SHOTS_BUSY", "Shot analysis is already running for this job", 409)
+            shot_jobs[job_id] = {"state": "running", "done": 0, "total": len(clips), "current": None, "error": None}
+
+        def work():
+            def prog(d, n, p):
+                with shots_lock:
+                    shot_jobs[job_id].update(done=d, total=n, current=os.path.basename(p))
+            try:
+                rep = analyse_takes(clips, cache_dir=cache_dir, workers=max(1, (os.cpu_count() or 2) // 2),
+                                    progress=prog, use_faces=req.faces)
+                tmp = _shots_path(job_id) + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as f:
+                    f.write(rep.model_dump_json())
+                os.replace(tmp, _shots_path(job_id))
+                with shots_lock:
+                    shot_jobs[job_id]["state"] = "done"
+            except Exception as e:  # reported to the panel, never swallowed
+                with shots_lock:
+                    shot_jobs[job_id].update(state="failed", error=f"{type(e).__name__}: {e}")
+
+        threading.Thread(target=work, daemon=True).start()
+        return dict(shot_jobs[job_id])
+
+    @app.get("/jobs/{job_id}/shots")
+    def shots_status(job_id: str):
+        jobs.get(job_id)
+        with shots_lock:
+            st = dict(shot_jobs.get(job_id) or {})
+        rep = _load_shots(job_id) if st.get("state") in (None, "done") else None
+        if not st and rep is None:
+            raise JobError("NO_SHOTS", "Shot analysis has not been run for this job", 404)
+        if rep is not None:
+            st.setdefault("state", "done")
+            st["takes"] = _shots_summary(job_id, rep)
+        return st
+
     @app.post("/jobs/{job_id}/cut")
     def make_cut(job_id: str, req: CutReq):
-        """Build the first cut: plan + FCP7 XML in the job folder; optional preview MP4 in the background."""
-        from engine.edit import EditSettings, build_plan, validate_plan
+        """Build the first cut: plan + FCP7 XML in the job folder (+ colour LUTs when asked);
+        optional preview MP4 in the background. Uses the shot analysis when it has been run."""
+        from engine.edit import EditSettings
+        from engine.firstcut import FirstCutError, make_first_cut
         from export.edit_xml import cut_sequence_name, write_edit_xml
         res, mm = _music(job_id)
         settings = EditSettings(style=req.style, pace=req.pace, seed=req.seed, effects=req.effects,
                                 story_share=req.story_share, story_clip_ids=req.story_clip_ids,
                                 exclude_clip_ids=req.exclude_clip_ids, early_frames=req.early_frames,
                                 place_low=req.place_low)
-        plan = build_plan(res, mm, settings)
-        problems = validate_plan(plan, res, mm)
-        if problems:  # never hand Premiere a cut that breaks a rule
-            raise JobError("CUT_INVALID", "; ".join(problems[:5]), 500)
+        shots = _load_shots(job_id)
+        folder = jobs.job_dir(job_id)
+        try:
+            fc = make_first_cut(res, mm, settings, shots, folder, colour_match=req.colour, look=req.look,
+                                hero_clip_id=req.hero_clip_id)
+        except FirstCutError as e:
+            raise JobError("CUT_INVALID", str(e), 409 if "shot analysis" in str(e) else 500) from e
+        plan = fc.plan
         name = req.sequence_name or cut_sequence_name(res.master.path, req.style)
         safe = "".join(ch if ch.isalnum() or ch in " -_" else "_" for ch in name)
-        folder = jobs.job_dir(job_id)
         plan_path = os.path.join(folder, safe + ".plan.json")
         with open(plan_path, "w", encoding="utf-8") as f:
             f.write(plan.model_dump_json(indent=2))
-        info = write_edit_xml(res, plan, os.path.join(folder, safe + ".xml"), name)
+        info = write_edit_xml(res, plan, os.path.join(folder, safe + ".xml"), name, fc.luts)
         out = {"sequence_name": name, "xml_path": info["path"], "plan_path": plan_path, "stats": plan.stats,
                "warnings": plan.warnings, "markers": [m.model_dump() for m in plan.markers],
-               "tempo_bpm": mm.tempo_bpm, "sections": [s.model_dump() for s in mm.sections], "preview": None}
+               "tempo_bpm": mm.tempo_bpm, "sections": [s.model_dump() for s in mm.sections], "preview": None,
+               "used_shot_analysis": shots is not None,
+               "colour": fc.colour.model_dump() if fc.colour else None, "look_lut": fc.look_lut}
+        luts = fc.luts
         if req.preview:
             from export.preview import render_preview
             mp4 = os.path.join(folder, safe + ".preview.mp4")
@@ -287,7 +372,7 @@ def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> Fas
                         previews[key].update(done=d, total=n)
                 try:
                     render_preview(res, plan, mp4, width=req.preview_width, workers=max(1, (os.cpu_count() or 2) // 2),
-                                   progress=prog)
+                                   progress=prog, luts=luts)
                     with preview_lock:
                         previews[key]["state"] = "done"
                 except Exception as e:  # reported to the panel, never swallowed

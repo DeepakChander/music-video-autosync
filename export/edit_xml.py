@@ -58,7 +58,10 @@ def _transition(name: str, cut: int, frames: int, rate: str) -> str:
             "<mediatype>video</mediatype></effect></transitionitem>")
 
 
-def build_edit_xml(result: SyncResult, plan: EditPlan, sequence_name: str) -> str:
+def build_edit_xml(result: SyncResult, plan: EditPlan, sequence_name: str, luts: Optional[dict[str, str]] = None) -> str:
+    """`luts`: clip_id -> .cube path, noted in each clip's comment (Premiere's API cannot apply a LUT;
+    the editor loads it in Lumetri > Basic Correction > Input LUT)."""
+    luts = luts or {}
     fps = Fraction(plan.fps_num, plan.fps_den)
     rate = _rate(fps)
     clips = {c.clip_id: c for c in result.clips}
@@ -87,7 +90,9 @@ def build_edit_xml(result: SyncResult, plan: EditPlan, sequence_name: str) -> st
             f'<clipitem id="cut-{i}"><name>{escape(c.name)}</name><enabled>TRUE</enabled>'
             f"<duration>{total}</duration>{rate}<start>{s.start}</start><end>{s.end}</end>"
             f"<in>{s.src_in}</in><out>{s.src_out}</out>{file_xml}{_motion_filter(s, rate)}"
-            f"<comments><mastercomment1>{escape(s.reason)}</mastercomment1></comments></clipitem>")
+            f"<comments><mastercomment1>{escape(s.reason)}</mastercomment1>"
+            + (f"<mastercomment2>Input LUT: {escape(luts[s.clip_id])}</mastercomment2>" if s.clip_id in luts else "")
+            + "</comments></clipitem>")
     video = f"<track>{''.join(items)}<enabled>TRUE</enabled><locked>FALSE</locked></track>"
 
     master_frames = max(1, _frames(result.master.duration_s, fps))
@@ -113,8 +118,9 @@ def build_edit_xml(result: SyncResult, plan: EditPlan, sequence_name: str) -> st
         f"{video}</video><audio>{audio}</audio></media></sequence></xmeml>\n")
 
 
-def write_edit_xml(result: SyncResult, plan: EditPlan, out_path: str, sequence_name: str) -> dict:
-    text = build_edit_xml(result, plan, sequence_name)
+def write_edit_xml(result: SyncResult, plan: EditPlan, out_path: str, sequence_name: str,
+                   luts: Optional[dict[str, str]] = None) -> dict:
+    text = build_edit_xml(result, plan, sequence_name, luts)
     tmp = out_path + ".tmp"
     with open(tmp, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)

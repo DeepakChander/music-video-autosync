@@ -66,3 +66,46 @@ def test_cut_rejects_bad_settings_and_unknown_jobs(client, job):
     assert r.status_code == 404
     r = client.get("/jobs/nope/cut/preview")
     assert r.status_code == 404
+
+
+def _wait_state(client, url, timeout=300):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        st = client.get(url).json()
+        if st.get("state") != "running":
+            return st
+        time.sleep(0.3)
+    raise AssertionError(f"{url} still running")
+
+
+def test_colour_match_needs_the_shot_analysis_first(client, tmp_path_factory, synth_set):
+    clips = [c for c in list_media(synth_set["dir"]) if os.path.abspath(c) != os.path.abspath(synth_set["master"])][:4]
+    jid = client.post("/jobs", json={"master_path": synth_set["master"], "clip_paths": clips, "sequence": SEQ}).json()["job_id"]
+    t0 = time.time()
+    while client.get(f"/jobs/{jid}").json()["state"] not in ("done", "failed") and time.time() - t0 < 300:
+        time.sleep(0.2)
+    r = client.post(f"/jobs/{jid}/cut", json={"colour": True})
+    assert r.status_code == 409 and "shot analysis" in r.json()["error"]["message"]
+    assert client.get(f"/jobs/{jid}/shots").status_code == 404
+
+
+def test_shot_analysis_then_cut_with_colour_and_look(client, job):
+    r = client.post(f"/jobs/{job}/shots", json={"faces": True})
+    assert r.status_code == 200 and r.json()["state"] == "running"
+    st = _wait_state(client, f"/jobs/{job}/shots")
+    assert st["state"] == "done", st
+    assert st["takes"] and all("size" in t and "setup" in t for t in st["takes"])
+    out = client.post(f"/jobs/{job}/cut", json={"style": "performance", "colour": True, "look": "warm",
+                                               "preview": True, "preview_width": 320}).json()
+    assert out["used_shot_analysis"] is True
+    col = out["colour"]
+    assert col["hero"] and col["look"] == "warm" and os.path.isfile(col["look_lut"])
+    for t in col["takes"].values():
+        assert os.path.isfile(t["match_lut"]) and os.path.isfile(t["final_lut"])
+        assert t["delta_e_after"] <= t["delta_e_before"] + 1e-6
+    xml = open(out["xml_path"], encoding="utf-8").read()
+    assert "Input LUT:" in xml
+    pv = _wait_state(client, f"/jobs/{job}/cut/preview")
+    assert pv["state"] == "done", pv
+    r = client.post(f"/jobs/{job}/cut", json={"look": "sepia"})
+    assert r.status_code == 422

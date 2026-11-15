@@ -23,7 +23,7 @@ function createView(deps) {
     clipPaths: saved.clipPaths || [], probe: null,
     jobId: saved.jobId || null, job: null, result: null,
     draft: saved.draft || null, lastReport: null,
-    cutSeed: saved.cutSeed || 0, cut: saved.cut || null,
+    cutSeed: saved.cutSeed || 0, cut: saved.cut || null, shots: null,
   };
 
   function persist() {
@@ -36,13 +36,15 @@ function createView(deps) {
   function settingsSnapshot() {
     return { keepScratch: $("keepScratch").checked, muteScratch: $("muteScratch").checked, placeLow: $("placeLow").checked,
       rate2: $("rate2").checked, fps: $("fps").value, res: $("res").value, adapter: $("adapter").value,
-      cutStyle: $("cutStyle").value, cutPace: $("cutPace").value, cutEffects: $("cutEffects").checked };
+      cutStyle: $("cutStyle").value, cutPace: $("cutPace").value, cutEffects: $("cutEffects").checked,
+      cutColour: $("cutColour").checked, cutLook: $("cutLook").value };
   }
 
   function restoreSettings() {
     const s = saved.settings || {};
-    for (const k of ["keepScratch", "muteScratch", "placeLow", "rate2", "cutEffects"]) if (k in s) $(k).checked = Boolean(s[k]);
-    for (const k of ["fps", "res", "adapter", "cutStyle", "cutPace"]) if (s[k]) $(k).value = s[k];
+    for (const k of ["keepScratch", "muteScratch", "placeLow", "rate2", "cutEffects", "cutColour"]) if (k in s) $(k).checked = Boolean(s[k]);
+    for (const k of ["fps", "res", "adapter", "cutStyle", "cutPace", "cutLook"]) if (s[k]) $(k).value = s[k];
+    if (!s.cutLook) $("cutLook").value = "none";
     if (!s.cutPace) $("cutPace").value = "1"; // "Normal", whatever the host does with `selected`
   }
 
@@ -119,7 +121,7 @@ function createView(deps) {
       banner(null);
     }
     const h = state.health;
-    $("about").innerHTML = `Panel 0.2.0 · Premiere ${esc(hostVersion || "?")}` +
+    $("about").innerHTML = `Panel 0.3.0 · Premiere ${esc(hostVersion || "?")}` +
       (h ? ` · Helper ${esc(h.version)} · Engine ${esc(h.engine_version)}<br>Cache: ${esc(h.cache_dir)}` : "");
   }
 
@@ -413,7 +415,27 @@ function createView(deps) {
   // ------------------------------------------------------------------ first cut
   function cutOptions() {
     return { style: $("cutStyle").value, pace: Number($("cutPace").value), effects: $("cutEffects").checked,
-      seed: state.cutSeed, place_low: $("placeLow").checked };
+      seed: state.cutSeed, place_low: $("placeLow").checked, colour: $("cutColour").checked, look: $("cutLook").value };
+  }
+
+  function renderShots(st) {
+    const el = $("shotsInfo");
+    if (!st || !st.takes) { el.textContent = "Not analysed yet: the cut balances the takes without looking at the picture."; return; }
+    const n = (size) => st.takes.filter((t) => t.size === size).length;
+    const setups = new Set(st.takes.map((t) => t.setup).filter(Boolean)).size;
+    const faces = st.takes.filter((t) => t.faces > 0.2).length;
+    const noDet = st.takes.some((t) => t.face_detector === "none");
+    const bad = st.takes.filter((t) => t.error);
+    el.textContent = `${st.takes.length} clips analysed: ${n("close")} close, ${n("medium")} medium, ${n("wide")} wide · ${setups} camera setups · faces in ${faces}`
+      + (noDet ? " · face detection unavailable (OpenCV missing): framing from the picture only" : "")
+      + (bad.length ? ` · could not read ${bad.map((t) => t.name).join(", ")}` : "");
+  }
+
+  async function analyseShots() {
+    if (!state.result) throw new Error("Analyse the clips first.");
+    $("shotsInfo").textContent = "Analysing shots…";
+    state.shots = await firstcut.analyseShots(state.jobId, (st) => { $("shotsInfo").textContent = `Analysing shots ${st.done}/${st.total}${st.current ? ` · ${st.current}` : ""}`; });
+    renderShots(state.shots);
   }
 
   function renderCut(out) {
@@ -428,6 +450,14 @@ function createView(deps) {
     }
     if (st.shots != null) lines.push(`${st.shots} shots (${st.performance_shots} performance, ${st.story_shots} story) · mean shot ${st.mean_shot_s} s · ${st.takes_used} takes · tempo ${Number(out.tempo_bpm).toFixed(1)} BPM · variation ${state.cutSeed + 1}`);
     if (out.sections && out.sections.length) lines.push(`Sections (markers on the sequence): ${out.sections.map((s) => esc(s.kind)).join(" · ")}`);
+    if (out.colour) {
+      const c = out.colour;
+      lines.push(`Colour: every take matched to <b>${esc(c.hero_name)}</b>${c.look !== "none" ? `, look ${esc(c.look)}` : ""}. LUTs: <span class="pos">${esc(c.folder)}</span>`);
+      lines.push(`<span class="muted">Premiere cannot be given a LUT by a panel: in Lumetri Color &gt; Basic Correction &gt; Input LUT &gt; Browse, choose each take's <i>_match${c.look !== "none" ? "_" + esc(c.look) : ""}.cube</i> (the clip comment names it). The preview video already has it.</span>`);
+    } else if (out.look_lut) {
+      lines.push(`Look LUT: <span class="pos">${esc(out.look_lut)}</span> (Lumetri Color &gt; Creative &gt; Look &gt; Browse)`);
+    }
+    if (out.used_shot_analysis === false) lines.push(`<span class="muted">Tip: Analyse shots first so the cut prefers sharp, well-exposed shots with visible faces and alternates close and wide.</span>`);
     for (const w of out.warnings || []) lines.push(`<span class="fail">Note</span> ${esc(w)}`);
     for (const n of out.notes || []) lines.push(`<span class="muted">${esc(n)}</span>`);
     if (out.preview && out.preview.path) lines.push(`Preview video: <span class="pos">${esc(out.preview.path)}</span>${out.preview.imported ? " (also in bin AutoSync)" : ""}`);
@@ -441,7 +471,8 @@ function createView(deps) {
     $("cutOut").textContent = "Building the first cut…";
     const out = await firstcut.make(state.jobId, cutOptions());
     state.cut = { sequence_name: out.sequence_name, xml_path: out.xml_path, sequenceGuid: out.sequenceGuid, imported: out.imported,
-      stats: out.stats, warnings: out.warnings, sections: out.sections, tempo_bpm: out.tempo_bpm, notes: out.notes };
+      stats: out.stats, warnings: out.warnings, sections: out.sections, tempo_bpm: out.tempo_bpm, notes: out.notes,
+      colour: out.colour || null, look_lut: out.look_lut || null, used_shot_analysis: out.used_shot_analysis };
     persist();
     renderCut(state.cut);
   }
@@ -505,7 +536,7 @@ function createView(deps) {
     $("analyseClips").disabled = b || !helperOk || !state.masterPath || !state.clipPaths.length || polling;
     $("generate").disabled = b || !helperOk || !state.result;
     $("openSequence").disabled = b || !state.draft;
-    for (const id of ["makeCut", "cutVariation", "cutPreview"]) $(id).disabled = b || !helperOk || !state.result;
+    for (const id of ["makeCut", "cutVariation", "cutPreview", "analyseShots"]) $(id).disabled = b || !helperOk || !state.result;
     $("selftestQuick").disabled = b || !helperOk;
     $("selftestFull").disabled = b || !helperOk;
     const def = storage.getItem("autosync.defaultAdapter");
@@ -534,6 +565,7 @@ function createView(deps) {
     on("generate", "Generate first draft", generate);
     on("openSequence", "Open sequence", openSequence);
     on("verifyImported", "Verify imported sequence", verifyImported);
+    on("analyseShots", "Analyse shots", analyseShots);
     on("makeCut", "Make first cut", makeCut);
     on("cutVariation", "Another variation", cutVariation);
     on("cutPreview", "Render preview video", cutPreview);
@@ -542,13 +574,16 @@ function createView(deps) {
     on("saveToken", "Save token", async () => { api.setToken($("tokenInput").value); await checkHelper(); });
     $("reviewList").addEventListener("click", onReviewClick);
     $("filter").addEventListener("change", renderReview);
-    for (const id of ["keepScratch", "muteScratch", "placeLow", "rate2", "fps", "res", "adapter", "cutStyle", "cutPace", "cutEffects"]) $(id).addEventListener("change", () => { persist(); render(); });
+    for (const id of ["keepScratch", "muteScratch", "placeLow", "rate2", "fps", "res", "adapter", "cutStyle", "cutPace", "cutEffects", "cutColour", "cutLook"]) $(id).addEventListener("change", () => { persist(); render(); });
     renderSelftest(selftest.last());
     renderCut(state.cut);
     render();
     checkHelper().then(async () => {
       if (state.helper === "ok" && state.jobId) {
         try { state.job = await api.job(state.jobId); if (state.job.state === "done") state.result = await api.result(state.jobId); } catch (e) { state.jobId = null; persist(); }
+        if (state.result && api.shotsStatus) {
+          try { state.shots = await api.shotsStatus(state.jobId); renderShots(state.shots); } catch (e) { state.shots = null; } // 404 = not run yet
+        }
         if (state.job && (state.job.state === "running" || state.job.state === "queued")) pollJob();
         render();
       }

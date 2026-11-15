@@ -12,9 +12,24 @@ HIDDEN = (collect_submodules("uvicorn") + collect_submodules("engine") + collect
           + collect_submodules("export") + ["tools.make_synthetic_takes", "tools.synth_song", "tools.accuracy_report"])
 EXCLUDES = ["tkinter", "matplotlib", "opentimelineio", "pytest", "IPython"]
 
-a_helper = Analysis([os.path.join(ROOT, "packaging", "helper_entry.py")], pathex=[ROOT], hiddenimports=HIDDEN + ["pystray._win32"],
-                    excludes=EXCLUDES, module_collection_mode={"pystray": "py"})
-a_engine = Analysis([os.path.join(ROOT, "packaging", "engine_entry.py")], pathex=[ROOT], hiddenimports=HIDDEN, excludes=EXCLUDES + ["pystray"])
+# YuNet face model (MIT) next to engine/shots.py, where it looks for it.
+DATAS = [(os.path.join(ROOT, "engine", "models", "face_detection_yunet_2023mar.onnx"), os.path.join("engine", "models"))]
+
+a_helper = Analysis([os.path.join(ROOT, "packaging", "helper_entry.py")], pathex=[ROOT], hiddenimports=HIDDEN + ["pystray._win32", "cv2"],
+                    excludes=EXCLUDES, datas=DATAS, module_collection_mode={"pystray": "py"})
+a_engine = Analysis([os.path.join(ROOT, "packaging", "engine_entry.py")], pathex=[ROOT], hiddenimports=HIDDEN + ["cv2"],
+                    datas=DATAS, excludes=EXCLUDES + ["pystray"])
+
+
+def _no_opencv_ffmpeg(entries):
+    """OpenCV's wheel bundles an LGPL FFmpeg DLL (opencv_videoio_ffmpeg*.dll) for its video I/O.
+    AutoSync never decodes through OpenCV (FFmpeg runs as a separate process), so it is left out
+    (docs/LICENSES.md)."""
+    return [e for e in entries if "opencv_videoio_ffmpeg" not in os.path.basename(e[0]).lower()]
+
+
+a_helper.binaries = _no_opencv_ffmpeg(a_helper.binaries)
+a_engine.binaries = _no_opencv_ffmpeg(a_engine.binaries)
 
 pyz_helper = PYZ(a_helper.pure)
 exe_helper = EXE(pyz_helper, a_helper.scripts, [], exclude_binaries=True, name="AutoSyncHelper", console=False, icon=ICON)

@@ -71,12 +71,19 @@ precision 0.80; within 2 beats: 0.56; chorus time labelled "chorus" 0.75. Publis
 same method on real songs (SALAMI/Beatles) are lower (boundary F3 0.46-0.58), so section labels are
 advisory: pacing is driven by loudness per bar, and section markers can be moved by the editor.
 
-### Shot analysis (next)
+### Shot analysis (built: engine/shots.py)
 FFmpeg keyframe pass at 640 px with an explicit BT.709 matrix (2 fps fallback), YuNet face model
 (MIT, 233 KB) through OpenCV headless (Apache-2.0); face height / frame height gives wide / medium /
 close; Laplacian variance (sharpness); luma percentiles (exposure); frame difference (motion);
-Lab mean/std (colour). Takes are grouped into camera setups by colour/edge histograms so two takes
-from the same setup are never cut together (jump cut).
+Lab mean/std (colour). Takes are grouped into camera setups (median-luma thumbnail correlation) so two takes from the
+same setup are not cut together (jump cut). Decisions and thresholds: docs/DECISIONS.md D-026.
+
+### Colour match (built: engine/colour.py)
+Hero take = medoid of the takes' colours among well-exposed wide/medium takes. With faces in both
+takes, the skin tone is shifted onto the hero's (pure Lab shift); otherwise Reinhard mean/std
+transfer of mid-tones; clamped. Looks: warm, cool, teal & orange, black & white, faded film.
+Output: 33^3 .cube LUTs (match per take, match + look per take, look alone); applied in the preview
+video; in Premiere the editor loads them in Lumetri (no API can).
 
 ### Edit planner
 1. Cut grid: song start, every section start (forced), beats. Shot length per section from the style

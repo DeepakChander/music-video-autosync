@@ -68,7 +68,20 @@ function createFirstCut(ppro, pr, api, sleepFn) {
     return { path: st.path, imported: Boolean(imported), note, sequenceName: out.sequence_name };
   }
 
-  return { make, preview, importXml };
+  // Shot analysis runs in the helper (faces, framing, sharpness, exposure, setups, colour).
+  async function analyseShots(jobId, onProgress) {
+    if (!jobId) throw new Error("Analyse the clips first.");
+    let st = await api.shots(jobId, { faces: true });
+    while (st && st.state === "running") {
+      if (onProgress) onProgress(st);
+      await sleep(1000);
+      st = await api.shotsStatus(jobId);
+    }
+    if (!st || st.state !== "done") throw new Error(`Shot analysis failed: ${st && st.error ? st.error : "no status from the helper"}`);
+    return st;
+  }
+
+  return { make, preview, importXml, analyseShots };
 }
 
 module.exports = { createFirstCut };

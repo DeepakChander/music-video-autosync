@@ -1,4 +1,4 @@
-# Limitations (v0.2.0)
+# Limitations (v0.3.0)
 
 What the product cannot do, or has not proven yet, and the working alternative for each
 (spec rule 4). Nothing here is hidden from the user: each case is reported in the panel.
@@ -54,12 +54,15 @@ What the product cannot do, or has not proven yet, and the working alternative f
 | Limit | Effect | Alternative |
 |---|---|---|
 | Song sections are detected automatically (Laplacian segmentation) | On synthetic songs about 80% of section starts land within 3 s, about 56% within 2 beats; published accuracy on real songs is lower | Markers show what was detected; move shots by hand where a section starts elsewhere |
-| Takes are chosen without looking at the picture yet (no face/shot-size/sharpness analysis in 0.2.0) | Choices balance takes and avoid repeats, but cannot prefer the best performance or alternate wide/close | Swap shots in Premiere; shot analysis is the next step (docs/EDIT_DESIGN.md) |
+| Shot analysis judges the picture, not the performance | It prefers sharp, exposed, face-visible moments and varies framing; it cannot tell the best emotional take | Swap shots in Premiere (alternates are listed per shot in the plan) |
+| Framing thresholds (close >= 22% of frame height for the face, wide < 8%) and the camera-setup grouping are design defaults | Checked on generated clips and a test portrait only; real footage may need other values | Settings in `engine/shots.py` (`ShotSettings`) |
+| Face detection needs OpenCV (installed with the helper) | Without it, framing falls back to "unknown" and colour match uses the whole picture | - |
 | Effects travel in the XML: punch-in = Basic Motion scale keyframes, flash = Dip to White, dissolve = Cross Dissolve | Premiere's reading of keyframe times from XML is **not verified** | Effects off, or adjust in Effect Controls |
 | Importing the cut XML through the panel uses the same undocumented `importFiles` route as XML placement | Premiere may not build the sequence automatically | The panel shows the .xml path for File > Import |
 | Slow-motion (2x) takes are used as story footage at native speed | They are not lip-synced in the cut | Conform them in Premiere first (Interpret Footage) |
 | Preview video renders dissolves as cuts | Preview only | The Premiere sequence has the dissolves |
-| No colour matching yet | Takes keep their own look | Lumetri by hand; colour match is planned (docs/EDIT_DESIGN.md) |
+| Premiere cannot be given a LUT by a panel (no API; Lumetri's Input LUT is a dropdown index) | Colour match and looks are .cube files the editor loads per take in Lumetri | The preview video has them applied; each clip's comment names its LUT |
+| Colour match is statistical (skin tone shift with faces, whole-picture mean/contrast without) | Mixed lighting within a take is matched on average; strong creative lighting can be reduced (changes are clamped) | Turn it off for that cut, or grade by hand |
 
 ## Distribution limits
 

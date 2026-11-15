@@ -148,12 +148,35 @@ def _cmd_music(a: argparse.Namespace) -> int:
     return 0
 
 
+def _video_clips(res) -> list[tuple[str, str]]:
+    return [(c.clip_id, c.path) for c in res.clips if c.source_fps]
+
+
+def _cmd_shots(a: argparse.Namespace) -> int:
+    from .result import load_result
+    from .shots import analyse_takes
+    res = load_result(a.result)
+    rep = analyse_takes(_video_clips(res), cache_dir=None if a.no_cache else (a.cache or default_cache_dir()),
+                        workers=a.workers or max(1, (os.cpu_count() or 2) // 2), use_faces=not a.no_faces,
+                        progress=None if a.quiet else (lambda d, n, p: print(f"[{d}/{n}] {os.path.basename(p)}", file=sys.stderr)))
+    with open(a.out, "w", encoding="utf-8") as f:
+        f.write(rep.model_dump_json())
+    names = {c.clip_id: c.name for c in res.clips}
+    for cid, t in sorted(rep.takes.items(), key=lambda kv: names.get(kv[0], kv[0])):
+        faces = sum(1 for s in t.samples if s.faces) / max(1, len(t.samples))
+        print(f"{names.get(cid, cid)[:32]:32} {t.size or '-':7} setup {rep.setups.get(cid, '-'):4} faces {faces:4.0%} "
+              f"{'error: ' + t.error if t.error else ''}")
+    return 0
+
+
 def _cmd_cut(a: argparse.Namespace) -> int:
     from export.edit_xml import cut_sequence_name, write_edit_xml
 
-    from .edit import EditSettings, build_plan, validate_plan
+    from .edit import EditSettings
+    from .firstcut import FirstCutError, make_first_cut
     from .music import music_map_for_file
     from .result import load_result
+    from .shots import ShotsReport, analyse_takes
 
     res = load_result(a.result)
     by_name = {c.name: c.clip_id for c in res.clips}
@@ -161,12 +184,26 @@ def _cmd_cut(a: argparse.Namespace) -> int:
     settings = EditSettings(style=a.style, pace=a.pace, seed=a.seed, effects=not a.no_effects,
                             story_share=a.story_share, early_frames=a.early_frames, place_low=a.place_low,
                             story_clip_ids=ids(a.story), exclude_clip_ids=ids(a.exclude))
-    mm = music_map_for_file(res.master.path, load_settings(None, {}), None if a.no_cache else (a.cache or default_cache_dir()))
-    plan = build_plan(res, mm, settings)
-    problems = validate_plan(plan, res, mm)
-    if problems:  # never write a cut that breaks a rule silently
-        print("error: the cut breaks a rule:\n  " + "\n  ".join(problems[:10]), file=sys.stderr)
+    cache = None if a.no_cache else (a.cache or default_cache_dir())
+    mm = music_map_for_file(res.master.path, load_settings(None, {}), cache)
+    shots = None
+    if a.shots:
+        with open(a.shots, encoding="utf-8") as f:
+            shots = ShotsReport.model_validate_json(f.read())
+    elif a.analyse_shots or a.colour:
+        shots = analyse_takes(_video_clips(res), cache_dir=cache, workers=a.workers or max(1, (os.cpu_count() or 2) // 2))
+    out_dir = os.path.dirname(os.path.abspath(a.out or a.preview or a.plan or a.result))
+    try:
+        fc = make_first_cut(res, mm, settings, shots, out_dir, colour_match=a.colour, look=a.look,
+                            hero_clip_id=ids([a.hero])[0] if a.hero else None)
+    except FirstCutError as e:
+        print(f"error: {e}", file=sys.stderr)
         return 3
+    plan = fc.plan
+    if fc.colour:
+        print(f"colour: every take matched to {fc.colour.hero_name}; LUTs in {fc.colour.folder}")
+    elif fc.look_lut:
+        print(f"look: {fc.look_lut}")
     if a.plan:
         with open(a.plan, "w", encoding="utf-8") as f:
             f.write(plan.model_dump_json(indent=2))
@@ -177,11 +214,11 @@ def _cmd_cut(a: argparse.Namespace) -> int:
     for w in plan.warnings:
         print(f"warning: {w}", file=sys.stderr)
     if a.out:
-        info = write_edit_xml(res, plan, a.out, name)
+        info = write_edit_xml(res, plan, a.out, name, fc.luts)
         print(f"Wrote {info['path']}: sequence '{name}' (File > Import in Premiere)")
     if a.preview:
         from export.preview import render_preview
-        info = render_preview(res, plan, a.preview, width=a.preview_width, workers=a.workers or 4,
+        info = render_preview(res, plan, a.preview, width=a.preview_width, workers=a.workers or 4, luts=fc.luts,
                               progress=None if a.quiet else (lambda d, n: print(f"\rrendering {d}/{n}", end="", file=sys.stderr)))
         if not a.quiet:
             print(file=sys.stderr)
@@ -225,6 +262,16 @@ def build_parser() -> argparse.ArgumentParser:
     mu.add_argument("--no-cache", action="store_true")
     mu.set_defaults(func=_cmd_music)
 
+    sh = sub.add_parser("shots", help="analyse the pictures: faces and shot size, sharpness, exposure, setups, colour")
+    sh.add_argument("--result", required=True)
+    sh.add_argument("--out", required=True)
+    sh.add_argument("--no-faces", action="store_true")
+    sh.add_argument("--workers", type=int)
+    sh.add_argument("--cache")
+    sh.add_argument("--no-cache", action="store_true")
+    sh.add_argument("--quiet", action="store_true")
+    sh.set_defaults(func=_cmd_shots)
+
     cu = sub.add_parser("cut", help="build a first cut (Premiere XML and/or preview MP4) from a sync result")
     cu.add_argument("--result", required=True, help="sync_result.json from analyze")
     cu.add_argument("--style", default="performance", choices=["performance", "performance_story", "hype", "ballad"])
@@ -236,6 +283,11 @@ def build_parser() -> argparse.ArgumentParser:
     cu.add_argument("--early-frames", type=int, default=0, help="cut this many frames before the beat")
     cu.add_argument("--place-low", action="store_true", help="also use LOW clips")
     cu.add_argument("--no-effects", action="store_true")
+    cu.add_argument("--shots", help="shot analysis JSON from the shots command")
+    cu.add_argument("--analyse-shots", action="store_true", help="analyse the pictures now (faces, sharpness, setups)")
+    cu.add_argument("--colour", action="store_true", help="match every take's colour to a hero take (writes .cube LUTs)")
+    cu.add_argument("--look", default="none", choices=["none", "warm", "cool", "teal_orange", "bw_contrast", "film_fade"])
+    cu.add_argument("--hero", help="clip name of the colour reference take (default: chosen automatically)")
     cu.add_argument("--out", help="the .xml file to write (File > Import in Premiere)")
     cu.add_argument("--name", help="sequence name")
     cu.add_argument("--plan", help="write the edit plan JSON here")

@@ -320,3 +320,29 @@ fails the build if any other file requires a relative module.
   **Not verified:** Premiere importing the cut XML (markers, keyframes, transitions) on a real
   install; the next client test checks it.
 
+## D-026 Shot analysis and colour match
+
+- **Shot analysis (engine/shots.py):** FFmpeg samples 2 frames per second at 640 px (keyframes only
+  when the codec allows it, BT.709 matrix), YuNet 2023mar (MIT, pinned sha256) through OpenCV
+  headless (Apache-2.0) for faces. Framing by the largest face's height: close >= 22% of the frame,
+  medium >= 8%, else wide (design defaults). Camera setups: average-linkage clustering of a 32x18
+  median-luma thumbnail (1 - correlation < 0.35). Quality per sample: exposure (mid luma, clipping)
+  and sharpness (Laplacian variance relative to all takes); black frames 0.
+- **Planner:** quality, framing and face presence are read for the exact source window of each
+  candidate shot; same setup back to back is penalised as a jump cut; close-close penalised; wide
+  preferred at section starts; story clips skip black/blurry stretches.
+- **Colour (engine/colour.py):** hero = medoid of the takes' mean colours among well-exposed wide or
+  medium takes. With faces in both takes: a pure Lab shift of the skin onto the hero's skin; without:
+  Reinhard mean/std transfer of mid-tones; clamped (L +-15, a/b +-12, contrast x0.7-1.4). Story
+  footage is not matched (different scene on purpose), only the look. LUTs: 33^3 .cube per Adobe's
+  Cube LUT spec 1.0; FFmpeg's lut3d reads them as our own interpolation does (test).
+- **Why faces drive colour:** on a simulated shoot, whole-picture matching moved close-up skin
+  tones away from the hero's (background-dominated statistics); the face shift brought skin
+  distance from 9.6 to 0.1 dE (worst take) and below 0.6 for all.
+- **Premiere:** no API applies a LUT (Lumetri Input LUT is an index; XML colour filters were removed
+  in 26.0), so LUTs are files, named in each clip's comment, and applied in the preview video.
+- **Verified:** tests/unit/test_shots.py (sharpness, exposure, black, motion, setups, close/medium/wide
+  on a NASA public-domain portrait), tests/unit/test_colour.py (round trip, cast removal, clamps,
+  FFmpeg agreement, 8-bit detection), helper and smoke 9/9. **Not verified:** thresholds on real
+  footage; the frozen Windows build loading OpenCV without its FFmpeg DLL (the release smoke checks it).
+

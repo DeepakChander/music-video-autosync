@@ -66,6 +66,20 @@ After **Analyse All Clips** has finished, section **6. First cut** builds an edi
   is automatic and can be off by a bar or two (docs/LIMITATIONS.md).
 - **Another variation** = same rules, different choices. **Render preview video** = an MP4 of the
   cut with the song, also imported into bin AutoSync.
+- **Analyse shots** looks at every clip's picture (2 frames a second): faces and framing (close,
+  medium, wide by face size), sharpness, exposure, black frames, movement, camera setup (takes
+  filmed from the same position) and colour. The cut then prefers sharp, well-exposed moments
+  with a visible face, alternates close and wide, never cuts between two takes of the same setup,
+  opens sections on a wide shot, and skips black or blurry parts of story clips.
+- **Colour match** balances every performance take to one hero take (chosen automatically: the
+  most typical well-exposed wide or medium take). With faces in both takes it moves the skin tone
+  onto the hero's skin tone; without faces it matches the whole picture. Changes are clamped (it
+  balances, it does not repaint). Story footage keeps its own colours. **Look** adds a creative
+  look on top (warm, cool, teal & orange, black & white, faded film).
+- Colour comes as .cube LUT files (one per take, plus the look alone). Premiere does not let a
+  panel load a LUT: apply each take's LUT in Lumetri Color > Basic Correction > Input LUT
+  (the clip comment names it), or the look LUT in Creative > Look on an adjustment layer.
+  The preview video has the colour applied.
 
 The cut is a starting point: swap shots, trim and grade as usual. The synced draft (step 5) keeps
 every take on its own track for alternates.

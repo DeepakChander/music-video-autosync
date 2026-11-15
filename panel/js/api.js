@@ -120,6 +120,8 @@ function createApi(deps) {
     music: (id) => call("GET", `/jobs/${encodeURIComponent(id)}/music`),
     cut: (id, opts) => call("POST", `/jobs/${encodeURIComponent(id)}/cut`, opts || {}),
     cutPreview: (id) => call("GET", `/jobs/${encodeURIComponent(id)}/cut/preview`),
+    shots: (id, opts) => call("POST", `/jobs/${encodeURIComponent(id)}/shots`, opts || {}),
+    shotsStatus: (id) => call("GET", `/jobs/${encodeURIComponent(id)}/shots`),
   };
 }
 

@@ -307,3 +307,18 @@ test("first cut preview: polls until the helper has rendered it, then imports th
   const failing = { cut: async () => ({ preview: { state: "running" } }), cutPreview: async () => ({ state: "failed", error: "disk full" }) };
   await assert.rejects(createFirstCut(fake.ppro, pr, failing, async () => {}).preview("J1", {}), /disk full/);
 });
+
+test("shot analysis: polls the helper until done and reports failures", async () => {
+  const { fake, pr } = setup();
+  let polls = 0;
+  const api = {
+    shots: async () => ({ state: "running", done: 0, total: 3 }),
+    shotsStatus: async () => (++polls < 3 ? { state: "running", done: polls, total: 3 } : { state: "done", takes: [{ name: "a", size: "close" }] }),
+  };
+  const seen = [];
+  const st = await createFirstCut(fake.ppro, pr, api, async () => {}).analyseShots("J1", (s) => seen.push(s.done));
+  assert.strictEqual(st.takes[0].size, "close");
+  assert.deepStrictEqual(seen, [0, 1, 2]);
+  const bad = { shots: async () => ({ state: "running" }), shotsStatus: async () => ({ state: "failed", error: "OpenCV missing" }) };
+  await assert.rejects(createFirstCut(fake.ppro, pr, bad, async () => {}).analyseShots("J1"), /OpenCV missing/);
+});

@@ -108,6 +108,22 @@
         <option value="ballad">Ballad (longer shots, dissolves)</option>
       </select>
     </div>
+    <div class="row wrap"><button id="analyseShots" disabled>Analyse shots (faces, framing, colour)</button></div>
+    <div class="row"><span id="shotsInfo" class="muted small grow">Not analysed yet: the cut balances the takes without looking at the picture.</span></div>
+    <div class="row">
+      <label><input type="checkbox" id="cutColour"> Colour match (every take to one hero take)</label>
+    </div>
+    <div class="row">
+      <span class="label">Look</span>
+      <select id="cutLook">
+        <option value="none">None</option>
+        <option value="warm">Warm</option>
+        <option value="cool">Cool</option>
+        <option value="teal_orange">Teal &amp; orange</option>
+        <option value="bw_contrast">Black &amp; white</option>
+        <option value="film_fade">Faded film</option>
+      </select>
+    </div>
     <div class="row">
       <span class="label">Pace</span>
       <select id="cutPace">

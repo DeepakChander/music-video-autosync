@@ -268,9 +268,25 @@ def plan_slots(grid: list[GridPoint], music: MusicMap, settings: EditSettings, d
 @dataclass
 class ShotInfo:
     """Optional per-take analysis (engine/shots.py). Missing info = neutral scores."""
-    quality: float = 0.5            # 0..1: face visible, sharp, well exposed
-    size: Optional[str] = None      # wide | medium | close
+    quality: float = 0.5            # 0..1: sharp, well exposed (take average)
+    size: Optional[str] = None      # wide | medium | close (take majority)
     setup: Optional[str] = None     # camera setup group; takes in one setup never cut together
+    times: list[float] = field(default_factory=list)       # sample times in the clip (s)
+    qualities: list[float] = field(default_factory=list)   # per sample
+    sizes: list[Optional[str]] = field(default_factory=list)
+    faces: list[bool] = field(default_factory=list)
+
+    def window(self, a_s: float, b_s: float) -> tuple[float, Optional[str], float]:
+        """(quality, shot size, fraction of samples with a face) for clip time [a_s, b_s)."""
+        if not self.times:
+            return self.quality, self.size, 0.0
+        idx = [i for i, t in enumerate(self.times) if a_s - 0.25 <= t < b_s + 0.25] or \
+              [min(range(len(self.times)), key=lambda i: abs(self.times[i] - (a_s + b_s) / 2))]
+        q = sum(self.qualities[i] for i in idx) / len(idx)
+        sz = [self.sizes[i] for i in idx if i < len(self.sizes) and self.sizes[i]]
+        size = max(set(sz), key=sz.count) if sz else self.size
+        face = sum(1 for i in idx if i < len(self.faces) and self.faces[i]) / len(idx)
+        return q, size, face
 
 
 @dataclass
@@ -286,19 +302,29 @@ class _State:
 
 
 def _score(t: Take, a: int, b: int, kind: str, section_start: bool, info: ShotInfo, st: _State,
-           settings: EditSettings, n_takes: int, shot_index: int) -> Optional[float]:
+           settings: EditSettings, n_takes: int, shot_index: int, fps: Fraction) -> Optional[float]:
     cid = t.clip.clip_id
     setup = info.setup or cid
     if cid == st.prev:
         return None                                   # never the same take twice in a row
-    s = info.quality
+    src_a = (t.in_frame + (a - t.start)) / float(fps)
+    src_b = (t.in_frame + (b - t.start)) / float(fps)
+    q, size, face = info.window(src_a, src_b)
+    if q <= 0.05:
+        return None                                   # black or unusable picture here
+    s = q
+    s += 0.15 * face                                  # a visible face shows the lip sync
     s += 0.1 if t.clip.status == Status.HIGH else 0.0
     if st.prev_setup is not None and setup == st.prev_setup:
         s -= 0.6                                      # same camera setup = jump cut
-    if info.size and st.prev_size and info.size != st.prev_size:
+    if size and st.prev_size and size != st.prev_size:
         s += 0.15                                     # alternate shot sizes
-    if section_start and info.size == "wide" and kind in ("intro", "verse", "bridge"):
-        s += 0.1
+    if size and st.prev_size == "close" and size == "close":
+        s -= 0.1                                      # two close-ups in a row read as a jump
+    if section_start and size == "wide" and kind in ("intro", "verse", "bridge", "outro"):
+        s += 0.15                                     # establish a section wide
+    if kind == "chorus" and size == "close" and not section_start:
+        s += 0.05
     # Recently used takes wait a little (graded, so the order never settles into a fixed cycle).
     if st.recent[-2:-1] == [cid]:
         s -= 0.2
@@ -375,6 +401,14 @@ def build_plan(result: SyncResult, music: MusicMap, settings: Optional[EditSetti
                 t = story[min(len(story) - 1, idx * len(story) // max(1, len(story_order)))] if k in story_slots else story[k % len(story)]
                 length = b - a
                 pos = story_pos.get(t.clip.clip_id, min(t.total // 10, max(0, t.total - length)))
+                sinfo = shot_info.get(t.clip.clip_id)
+                if sinfo is not None and sinfo.times:  # skip black / blurry stretches of the story clip
+                    step = max(1, int(round(float(fps) / 2)))
+                    p = pos
+                    while p + length <= t.total and sinfo.window(p / float(fps), (p + length) / float(fps))[0] < 0.3:
+                        p += step
+                    if p + length <= t.total:
+                        pos = p
                 if pos + length > t.total:
                     pos = max(0, t.total - length)
                 if length <= t.total:
@@ -408,7 +442,7 @@ def build_plan(result: SyncResult, music: MusicMap, settings: Optional[EditSetti
         scored = []
         for t in cands:
             info = shot_info.get(t.clip.clip_id, ShotInfo())
-            sc = _score(t, a, b, kind, is_start, info, st, settings, len(perf), k)
+            sc = _score(t, a, b, kind, is_start, info, st, settings, len(perf), k, fps)
             if sc is not None:
                 scored.append((sc, t.clip.clip_id, t))
         if not scored:  # only the previous take covers this slot
@@ -417,6 +451,7 @@ def build_plan(result: SyncResult, music: MusicMap, settings: Optional[EditSetti
         best = scored[0][2]
         info = shot_info.get(best.clip.clip_id, ShotInfo())
         src_in = best.in_frame + (a - best.start)
+        _q, best_size, _f = info.window(src_in / float(fps), (src_in + (b - a)) / float(fps))
         last = shots[-1] if shots else None
         if (last is not None and last.kind == "performance" and last.clip_id == best.clip.clip_id
                 and last.end == a and last.src_out == src_in):
@@ -431,7 +466,7 @@ def build_plan(result: SyncResult, music: MusicMap, settings: Optional[EditSetti
                           reason=f"{kind}{' section start' if is_start else ''}{' coverage cut' if is_rest else ''}; score {scored[0][0]:.2f}",
                           alternates=[x[1] for x in scored[1:4]]))
         cid = best.clip.clip_id
-        st.prev, st.prev_setup, st.prev_size = cid, info.setup or cid, info.size
+        st.prev, st.prev_setup, st.prev_size = cid, info.setup or cid, best_size
         st.recent = (st.recent + [cid])[-3:]
         st.used[cid] = st.used.get(cid, 0) + (b - a)
         st.assigned += b - a

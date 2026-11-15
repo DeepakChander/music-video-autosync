@@ -78,6 +78,7 @@ function setup() {
   const firstcut = {
     make: rec("firstcut.make", () => Object.assign({}, cutOut)),
     preview: rec("firstcut.preview", { path: "C:/cut.preview.mp4", imported: true, note: null, sequenceName: "AutoSync Cut - S" }),
+    analyseShots: rec("firstcut.analyseShots", { state: "done", takes: [{ name: "a", size: "close", setup: "S1", faces: 1, face_detector: "yunet" }, { name: "b", size: "wide", setup: "S2", faces: 0.5, face_detector: "yunet" }] }),
   };
   const view = createView({ doc, core, api, pr, adapters, selftest, common, storage, lfs, firstcut, hostVersion: "26.5.0", setInterval: () => 0 });
   return { view, doc, calls, storage };
@@ -124,12 +125,17 @@ test("each button performs its real operation", async () => {
   assert.match(doc.els.get("summary").innerHTML, /File &gt; Import/);
   await click("verifyImported");
   assert.ok(names(calls).includes("xml.verifyImported"));
+  await click("analyseShots");
+  assert.ok(names(calls).includes("firstcut.analyseShots"));
+  assert.match(doc.els.get("shotsInfo").textContent, /2 clips analysed: 1 close, 0 medium, 1 wide · 2 camera setups/);
   doc.els.get("cutStyle").value = "hype";
+  doc.els.get("cutColour").checked = true;
+  doc.els.get("cutLook").value = "warm";
   await click("makeCut");
   const mk = calls.filter((c) => c[0] === "firstcut.make");
   assert.strictEqual(mk.length, 1);
   assert.strictEqual(mk[0][1], "J1");
-  assert.deepStrictEqual(Object.assign({}, mk[0][2]), { style: "hype", pace: 1, effects: true, seed: 0, place_low: false });
+  assert.deepStrictEqual(Object.assign({}, mk[0][2]), { style: "hype", pace: 1, effects: true, seed: 0, place_low: false, colour: true, look: "warm" });
   assert.match(doc.els.get("cutOut").innerHTML, /First cut ready/);
   await click("cutVariation");
   assert.strictEqual(calls.filter((c) => c[0] === "firstcut.make")[1][2].seed, 1, "another variation = next seed");

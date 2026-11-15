@@ -134,6 +134,20 @@ def main(argv=None) -> int:
         check("self-test accuracy gate", st == 200 and not acc.get("gate_failures"),
               f"within 1 frame {m.get('position_within_1_frame_pct')}%, wrong HIGH/MEDIUM {m.get('wrong_HIGH_or_MEDIUM')}, "
               f"failures {acc.get('gate_failures')}")
+    # First cut: shot analysis (OpenCV + YuNet must load, also in the frozen build) and a cut.
+    st, sh = call(f"{base}/jobs/{job_id}/shots", token, "POST", {"faces": True})
+    while st == 200 and sh.get("state") == "running":
+        time.sleep(1)
+        st, sh = call(f"{base}/jobs/{job_id}/shots", token)
+    takes = sh.get("takes", []) if st == 200 else []
+    readable = [t for t in takes if not t.get("error")]
+    check("shot analysis (face detector loaded)", st == 200 and sh.get("state") == "done" and readable
+          and all(t.get("face_detector") == "yunet" for t in readable),
+          f"{len(readable)}/{len(takes)} clips analysed, detector {sorted({t.get('face_detector') for t in readable})}"
+          if st == 200 else str(sh))
+    st, cut = call(f"{base}/jobs/{job_id}/cut", token, "POST", {"style": "performance", "colour": True})
+    check("first cut with colour match", st == 200 and os.path.isfile(cut.get("xml_path", "")) and cut.get("colour"),
+          f"{cut.get('stats', {}).get('shots')} shots, hero {cut.get('colour', {}).get('hero_name')}" if st == 200 else str(cut))
     failed = [r for r in results if not r[1]]
     print(f"\n{len(results) - len(failed)}/{len(results)} checks passed; job {job_id}")
     return 1 if failed else 0

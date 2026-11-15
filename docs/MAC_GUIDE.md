@@ -90,7 +90,8 @@ cd ~/Desktop/music-video-autosync
 .venv/bin/python tools/helper_smoke.py --count 14
 ```
 
-Expected: **7/7 checks passed**. This proves the analysis works on your Mac without Premiere.
+Expected: **9/9 checks passed**. This proves the analysis, the shot analysis (face detection) and the
+first cut with colour match work on your Mac without Premiere.
 
 ## Step 6. Install the panel in Premiere
 
@@ -147,12 +148,17 @@ Work on a copy of your project (File > Save As...). Then, in the panel, from top
 6. **Review**: fix takes with **Use ...** (alternate positions), **-1f / +1f**, or type a
    timecode and click **Set**.
 
-7. **First cut (edit)**: choose a **Style** (Performance, Performance + story, Hype, Ballad), a
-   **Pace** and **Effects**, then **MAKE FIRST CUT**. A new sequence "AutoSync Cut - ..." opens: the
+7. **First cut (edit)**: first click **Analyse shots** (faces, close/medium/wide framing,
+   sharpness, exposure, camera setups, colour; about 3 s per minute of HD footage). Then choose a
+   **Style** (Performance, Performance + story, Hype, Ballad), **Colour match** and a **Look** if you
+   want them, a **Pace** and **Effects**, then **MAKE FIRST CUT**. A new sequence "AutoSync Cut - ..." opens: the
    takes are cut on the beat with a marker at every song section, the song on A1. **Another
    variation** makes a different cut with the same rules; **Render preview video** writes an MP4 of
    the cut (and adds it to bin AutoSync) that you can watch or send without Premiere. If the panel
    says Premiere did not import the cut, use File > Import with the .xml path it shows.
+   Colour match writes one LUT file per take (the panel shows the folder). Premiere does not let a
+   panel load a LUT, so in Lumetri Color > Basic Correction > Input LUT > Browse, choose the take's
+   LUT (each clip's comment names it); the preview video already has the colour applied.
 
 | Status | Meaning | On the timeline |
 |---|---|---|
@@ -196,7 +202,10 @@ First cut from the command line (an edited sequence plus a preview video):
 ```
 
 `--style` is `performance`, `performance_story`, `hype` or `ballad`; `--pace 1.4` cuts faster,
-`--seed 2` gives another variation. File > Import the .xml as above; the .mp4 plays anywhere.
+`--seed 2` gives another variation; `--analyse-shots` looks at the pictures first (faces, framing,
+sharpness); `--colour` matches every take to a hero take and `--look warm` (cool, teal_orange,
+bw_contrast, film_fade) adds a look, both as .cube LUTs in a `luts` folder next to the .xml.
+File > Import the .xml as above; the .mp4 plays anywhere.
 
 | Your timeline | `--fps` value |
 |---|---|
@@ -229,7 +238,7 @@ If the panel changed, install the new `.ccx` again (step 6).
 | `zsh: command not found: brew` in a new window | Close Terminal and open it again (setup added Homebrew to `~/.zprofile`). The AutoSync scripts find Homebrew either way |
 | `permission denied: ./scripts/...` | `chmod +x scripts/*.sh` |
 | `port 47653 is already in use` | A helper is already running in another Terminal window; use it or close it |
-| The panel does not scroll, **Use selected project items** ignores a selected bin, or there is no **First cut** section | An older panel. Update (see "Updating to a newer version") and install the new `.ccx`; the panel's About line shows **Panel 0.2.0** or later |
+| The panel does not scroll, **Use selected project items** ignores a selected bin, or there is no **First cut** section | An older panel. Update (see "Updating to a newer version") and install the new `.ccx`; the panel's About line shows **Panel 0.3.0** or later |
 | `helper_smoke.py` says the helper is not reachable | Start it first (step 4) and wait for "Application startup complete." |
 | The panel shows red, but the helper runs with `https://` | Premiere may not accept the local certificate. Use Plan B, and send us a screenshot plus the panel's error from UXP Developer Tool > Debug |
 | A take is UNSYNCED / DECODE_ERROR | FFmpeg cannot read its audio (some RAW formats). Place it by hand in Review (type a timecode, click **Set**) |
