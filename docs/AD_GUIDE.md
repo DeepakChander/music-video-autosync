@@ -22,12 +22,14 @@ had to guess about the layout) before you build anything.
 
 **Save shot-list template…** writes this CSV (Excel opens it):
 
-| order | shot | type | description | dialogue | speaker | duration | board | super | notes |
-|---|---|---|---|---|---|---|---|---|---|
-| 1 | 1A | mos | Wide: kitchen at sunrise | | | 3 | | | |
-| 2 | 2A | dialogue | Close: Sarah at the coffee maker | Fresh coffee in sixty seconds. | SARAH | | | | |
-| 3 | 3A | mos | Insert: coffee pouring | | | 2 | | | |
-| 4 | 4A | vo | Packshot on the counter | Aurora. Wake up better. | VO | 3 | | AURORA | |
+| shot | type | description | dialogue | duration |
+|---|---|---|---|---|
+| 1A | mos | Wide: kitchen at sunrise | | 3 |
+| 2A | dialogue | Close: Sarah at the coffee maker | SARAH: Fresh coffee in sixty seconds. | |
+| 3A | mos | Insert: coffee pouring | | 2 |
+| 4A | vo | Packshot on the counter | VO: Aurora. Wake up better. | 3 |
+
+The template also has the columns **order**, **speaker**, **board**, **super** and **notes**.
 
 - **type**: `dialogue` (spoken on camera), `vo` (voice-over, picture is MOS), `mos` (picture only),
   `graphic` (end card, super). Left empty: dialogue if there is a line, VO if the speaker is VO.
