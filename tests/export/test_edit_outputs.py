@@ -124,3 +124,16 @@ def test_xml_carries_the_plan(shoot):
     assert len(seq.findall("./media/video/track/transitionitem")) == flashes
     master = seq.find("./media/audio/track/clipitem")
     assert master.findtext("name") == "song"
+
+
+@needs_ffmpeg
+def test_preview_with_luts_in_a_folder_with_an_apostrophe_and_a_colon(shoot, tmp_path):
+    from engine.colour import build_lut, write_cube
+    d, res, mm = shoot
+    odd = tmp_path / "it's: a folder"
+    odd.mkdir()
+    lut = write_cube(str(odd / "warm.cube"), build_lut(None, "warm", 9), "warm")
+    plan = build_plan(res, mm, EditSettings(style="performance", effects=False))
+    luts = {c.clip_id: lut for c in res.clips}
+    info = render_preview(res, plan, str(tmp_path / "lut.mp4"), width=W, luts=luts)
+    assert os.path.getsize(info["path"]) > 1000

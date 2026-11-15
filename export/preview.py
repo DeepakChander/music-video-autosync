@@ -27,6 +27,27 @@ class PreviewError(RuntimeError):
     pass
 
 
+def ff_path(path: str) -> str:
+    """A file path inside an FFmpeg filter option: forward slashes, the drive colon escaped, quoted
+    ('C\\:/Users/x.cube'): the filtergraph parser drops the quotes, the option parser unescapes \\:.
+    Without it a Windows path's "C:" is read as an option separator."""
+    return "'" + path.replace(chr(92), "/").replace(":", chr(92) + ":") + "'"
+
+
+def _local_luts(luts: dict[str, str], tmp: str) -> dict[str, str]:
+    """Copy each LUT into the render folder as lut_N.cube and return clip_id -> that plain name.
+    FFmpeg runs inside the folder, so no drive letter, colon or apostrophe of a user's path ever
+    reaches the filter string."""
+    names: dict[str, str] = {}
+    out: dict[str, str] = {}
+    for cid, path in (luts or {}).items():
+        if path not in names:
+            names[path] = f"lut_{len(names)}.cube"
+            shutil.copyfile(path, os.path.join(tmp, names[path]))
+        out[cid] = names[path]
+    return out
+
+
 def pick_encoder(ffmpeg: str) -> str:
     out = run_tool([ffmpeg, "-hide_banner", "-encoders"], timeout=30).stdout.decode("utf-8", "replace")
     names = {line.split()[1] for line in out.splitlines() if len(line.split()) > 1 and line.startswith(" V")}
@@ -60,7 +81,7 @@ def _shot_filter(shot: Shot, w: int, h: int, fps: Fraction, lut: Optional[str],
         f.append(f"setpts={1.0 / speed:.6f}*PTS")
     f.append(f"fps={fps.numerator}/{fps.denominator}")
     if lut:
-        f.append(f"lut3d=file='{lut.replace(chr(92), '/').replace(':', chr(92) + ':')}'")
+        f.append(f"lut3d=file={ff_path(lut)}")
     for e in shot.effects:
         if e.kind == "punch_in":
             z = e.amount / 100.0
@@ -97,7 +118,7 @@ def _render_picture(segments: list[tuple[Optional[str], int, int, Optional[str]]
     done = [0]
 
     def run(cmd):
-        r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=tmp)
         done[0] += 1
         if progress:
             progress(done[0], len(jobs))
@@ -130,9 +151,9 @@ def render_preview(result: SyncResult, plan: EditPlan, out_path: str, width: int
     ar_w, ar_h = aspect or (result.sequence.width, result.sequence.height)
     height = int(round(width * ar_h / ar_w / 2)) * 2
     clips = {c.clip_id: c for c in result.clips}
-    luts = luts or {}
     tmp = tempfile.mkdtemp(prefix="autosync_preview_")
     try:
+        luts = _local_luts(luts or {}, tmp)
         segs = []
         for i, s in enumerate(plan.shots):
             n = s.end - s.start
@@ -169,9 +190,9 @@ def render_ad_preview(plan, clip_paths: dict[str, str], out_path: str, width: in
     ffmpeg = find_tool("ffmpeg")
     encoder = pick_encoder(ffmpeg)
     fps = Fraction(plan.fps_num, plan.fps_den)
-    luts = luts or {}
     tmp = tempfile.mkdtemp(prefix="autosync_adpreview_")
     try:
+        luts = _local_luts(luts or {}, tmp)
         segs = []
         for k, a in enumerate(plan.shots):
             n = a.end - a.start
@@ -186,7 +207,7 @@ def render_ad_preview(plan, clip_paths: dict[str, str], out_path: str, width: in
                           f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2", "setsar=1", f"fps={fps.numerator}/{fps.denominator}"]
                 lut = luts.get(a.clip_id)
                 if lut:
-                    vf.append(f"lut3d=file='{lut.replace(chr(92), '/').replace(':', chr(92) + ':')}'")
+                    vf.append(f"lut3d=file={ff_path(lut)}")
                 segs.append((clip_paths[a.clip_id], a.src_in, n, ",".join(vf)))
         picture = _render_picture(segs, fps, width, height, encoder, tmp, workers, progress)
         total_s = float(Fraction(plan.duration_frames) / fps)

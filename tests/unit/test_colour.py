@@ -7,6 +7,7 @@ import pytest
 
 from engine.colour import (LOOKS, apply_lut, build_lut, delta_e, lab_stats, lab_to_rgb, look_rgb, match_transfer,
                            read_cube, rgb_to_lab, write_cube)
+from export.preview import ff_path
 from tests.conftest import needs_ffmpeg
 
 
@@ -77,7 +78,7 @@ def test_ffmpeg_reads_our_cube_the_same_way(tmp_path, ffmpeg_bin):
     table = build_lut(match_transfer(lab_stats(scene(8, cast=(0.1, -0.05, 0.0))), lab_stats(scene(1))), "teal_orange")
     cube = write_cube(str(tmp_path / "t.cube"), table, "test")
     out = subprocess.run([ffmpeg_bin, "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", "64x64", "-i", str(src),
-                          "-vf", f"lut3d=file={cube}:interp=trilinear", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+                          "-vf", f"lut3d=file={ff_path(cube)}:interp=trilinear", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
                          check=True, stdout=subprocess.PIPE).stdout
     ff = np.frombuffer(out, dtype=np.uint8).reshape(64, 64, 3).astype(np.float64) / 255
     ours = apply_lut(table, img.reshape(-1, 3) / 255.0).reshape(64, 64, 3)
