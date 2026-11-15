@@ -2,6 +2,8 @@
 
   autosync-engine analyze --master song.wav --clips ./footage --fps 24000/1001 --out sync_result.json
   autosync-engine schema --out schema/sync_result.schema.json
+  autosync-engine music --master song.wav
+  autosync-engine cut --result sync_result.json --style performance --out cut.xml --preview cut.mp4
 """
 
 from __future__ import annotations
@@ -134,6 +136,59 @@ def _cmd_doctor(_a: argparse.Namespace) -> int:
     return 0 if out.get("ffmpeg") and out.get("ffprobe") else 1
 
 
+def _cmd_music(a: argparse.Namespace) -> int:
+    from .music import music_map_for_file
+    mm = music_map_for_file(a.master, load_settings(None, {}), None if a.no_cache else (a.cache or default_cache_dir()))
+    if a.out:
+        with open(a.out, "w", encoding="utf-8") as f:
+            f.write(mm.model_dump_json(indent=2))
+    print(f"tempo {mm.tempo_bpm:.2f} BPM, {len(mm.beats)} beats, {len(mm.downbeats)} bars")
+    for sec in mm.sections:
+        print(f"  {sec.start_s:8.2f}s  {sec.kind:11s} {sec.label}  {sec.bars:3d} bars  energy {sec.energy:.2f}")
+    return 0
+
+
+def _cmd_cut(a: argparse.Namespace) -> int:
+    from export.edit_xml import cut_sequence_name, write_edit_xml
+
+    from .edit import EditSettings, build_plan, validate_plan
+    from .music import music_map_for_file
+    from .result import load_result
+
+    res = load_result(a.result)
+    by_name = {c.name: c.clip_id for c in res.clips}
+    ids = lambda names: [by_name.get(n, n) for n in (names or [])]  # noqa: E731
+    settings = EditSettings(style=a.style, pace=a.pace, seed=a.seed, effects=not a.no_effects,
+                            story_share=a.story_share, early_frames=a.early_frames, place_low=a.place_low,
+                            story_clip_ids=ids(a.story), exclude_clip_ids=ids(a.exclude))
+    mm = music_map_for_file(res.master.path, load_settings(None, {}), None if a.no_cache else (a.cache or default_cache_dir()))
+    plan = build_plan(res, mm, settings)
+    problems = validate_plan(plan, res, mm)
+    if problems:  # never write a cut that breaks a rule silently
+        print("error: the cut breaks a rule:\n  " + "\n  ".join(problems[:10]), file=sys.stderr)
+        return 3
+    if a.plan:
+        with open(a.plan, "w", encoding="utf-8") as f:
+            f.write(plan.model_dump_json(indent=2))
+    name = a.name or cut_sequence_name(res.master.path, a.style)
+    st = plan.stats
+    print(f"{st['shots']} shots ({st['performance_shots']} performance, {st['story_shots']} story), "
+          f"mean {st['mean_shot_s']} s, {st['takes_used']} takes used; tempo {mm.tempo_bpm:.1f} BPM")
+    for w in plan.warnings:
+        print(f"warning: {w}", file=sys.stderr)
+    if a.out:
+        info = write_edit_xml(res, plan, a.out, name)
+        print(f"Wrote {info['path']}: sequence '{name}' (File > Import in Premiere)")
+    if a.preview:
+        from export.preview import render_preview
+        info = render_preview(res, plan, a.preview, width=a.preview_width, workers=a.workers or 4,
+                              progress=None if a.quiet else (lambda d, n: print(f"\rrendering {d}/{n}", end="", file=sys.stderr)))
+        if not a.quiet:
+            print(file=sys.stderr)
+        print(f"Wrote {info['path']} ({info['width']}x{info['height']}, {info['encoder']})")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="autosync-engine", description="Music Video AutoSync engine")
     p.add_argument("--version", action="version", version=__version__)
@@ -162,6 +217,35 @@ def build_parser() -> argparse.ArgumentParser:
     rp = sub.add_parser("report", help="print every clip's status, position and reason")
     rp.add_argument("--result", required=True)
     rp.set_defaults(func=_cmd_report)
+
+    mu = sub.add_parser("music", help="tempo, beats, bars and sections of the master song")
+    mu.add_argument("--master", required=True)
+    mu.add_argument("--out", help="write the music map JSON here")
+    mu.add_argument("--cache")
+    mu.add_argument("--no-cache", action="store_true")
+    mu.set_defaults(func=_cmd_music)
+
+    cu = sub.add_parser("cut", help="build a first cut (Premiere XML and/or preview MP4) from a sync result")
+    cu.add_argument("--result", required=True, help="sync_result.json from analyze")
+    cu.add_argument("--style", default="performance", choices=["performance", "performance_story", "hype", "ballad"])
+    cu.add_argument("--pace", type=float, default=1.0, help=">1 = more cuts, <1 = longer shots")
+    cu.add_argument("--seed", type=int, default=0, help="another number gives another variation")
+    cu.add_argument("--story-share", type=float, help="share of the song for story footage (0-0.8)")
+    cu.add_argument("--story", nargs="*", help="clip names to treat as story footage")
+    cu.add_argument("--exclude", nargs="*", help="clip names to leave out")
+    cu.add_argument("--early-frames", type=int, default=0, help="cut this many frames before the beat")
+    cu.add_argument("--place-low", action="store_true", help="also use LOW clips")
+    cu.add_argument("--no-effects", action="store_true")
+    cu.add_argument("--out", help="the .xml file to write (File > Import in Premiere)")
+    cu.add_argument("--name", help="sequence name")
+    cu.add_argument("--plan", help="write the edit plan JSON here")
+    cu.add_argument("--preview", help="render a preview .mp4 here")
+    cu.add_argument("--preview-width", type=int, default=1280)
+    cu.add_argument("--workers", type=int)
+    cu.add_argument("--cache")
+    cu.add_argument("--no-cache", action="store_true")
+    cu.add_argument("--quiet", action="store_true")
+    cu.set_defaults(func=_cmd_cut)
 
     dr = sub.add_parser("doctor", help="check that FFmpeg is available")
     dr.set_defaults(func=_cmd_doctor)

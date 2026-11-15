@@ -54,7 +54,8 @@ def _env(n: int, attack: int, decay: float, sr: int) -> np.ndarray:
     t = np.arange(n) / sr
     e = np.exp(-t / max(decay, 1e-4))
     if attack > 0:
-        e[:attack] *= np.linspace(0, 1, attack)
+        a = min(attack, n)  # a note shorter than its attack: ramp over the part that exists
+        e[:a] *= np.linspace(0, 1, attack)[:a]
     return e
 
 
