@@ -203,3 +203,45 @@ def test_line_is_pulled_onto_measured_speech():
     # neighbouring speech after the line (a crew call) is not swallowed
     assert refine_to_speech(1.4, 6.0, [[1.5, 3.0], [4.5, 5.5]], 1.9, 2.8) == (1.5, 3.0)
     assert refine_to_speech(1.0, 2.0, []) == (1.0, 2.0)
+
+
+def test_matching_in_other_languages():
+    from engine.ad import norm_words
+    from engine.stt import model_for
+    assert norm_words("¡Café recién hecho en 60 segundos!", "es") == ["cafe", "recien", "hecho", "en", "60", "segundos"]
+    assert norm_words("Café crème", "fr") == ["cafe", "creme"]
+    assert norm_words("ताज़ा कॉफ़ी, साठ सेकंड में।", "hi") == ["ताज़ा", "कॉफ़ी", "साठ", "सेकंड", "में"]
+    assert norm_words("Свежий кофе за 60 секунд", "ru")[:2] == ["свежий", "кофе"]
+    t = Transcript(clip_id="c", model="base", words=words("बस ताज़ा कॉफ़ी साठ सेकंड में", 1.0))
+    ms = align_line("ताज़ा कॉफ़ी, साठ सेकंड में।", t, language="hi")
+    assert ms and ms[0].score >= 95
+    assert model_for("en") == "base.en" and model_for("hi") == "base" and model_for("auto", "small") == "small"
+
+
+def test_cutdowns_from_script_columns_and_automatic(tmp_path):
+    from engine.ad import cutdown_script
+    p = write_csv(tmp_path / "v.csv", [
+        ["Shot", "Type", "Video", "Audio", "Duration", "in 15", "in 6"],
+        ["1", "mos", "Opening wide", "", "3", "x", ""],
+        ["2", "dialogue", "Close Sarah", "SARAH: Fresh coffee in sixty seconds.", "", "x", "x"],
+        ["3", "mos", "Pour", "", "2", "", ""],
+        ["4", "vo", "Packshot", "VO: Aurora. Wake up better.", "3", "x", "x"],
+    ])
+    sc = parse_script(p)
+    assert [s.versions for s in sc.shots] == [[15], [6, 15], [], [6, 15]]
+    tr = {"c2b": Transcript(clip_id="c2b", model="t", words=words("fresh coffee in sixty seconds", 3.0))}
+    full = build_ad_plan(sc, clips(), FPS, AdSettings(), transcripts=tr)
+    sub15, dropped15, how15 = cutdown_script(sc, 15, full, FPS)
+    assert [s.shot_id for s in sub15.shots] == ["1", "2", "4"] and dropped15 == ["3"] and "script" in how15
+    sub6, _, _ = cutdown_script(sc, 6, full, FPS)
+    assert [s.shot_id for s in sub6.shots] == ["2", "4"]
+    # Without columns: the packshot, the lines and the opening first; picture shots while they fit
+    plain = parse_script(write_csv(tmp_path / "p.csv", [r[:5] for r in [
+        ["Shot", "Type", "Video", "Audio", "Duration"], ["1", "mos", "Opening wide", "", "3"],
+        ["2", "dialogue", "Close Sarah", "SARAH: Fresh coffee in sixty seconds.", ""], ["3", "mos", "Pour", "", "2"],
+        ["4", "vo", "Packshot", "VO: Aurora. Wake up better.", "3"]]]))
+    fullp = build_ad_plan(plain, clips(), FPS, AdSettings(), transcripts=tr)
+    sub, dropped, how = cutdown_script(plain, 4.0, fullp, FPS)
+    assert "4" in [s.shot_id for s in sub.shots] and "automatic" in how
+    plan = build_ad_plan(sub, clips(), FPS, AdSettings(target_s=4.0), transcripts=tr)
+    assert validate_ad_plan(plan, clips()) == []

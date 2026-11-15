@@ -39,17 +39,25 @@ function createView(deps) {
     return { keepScratch: $("keepScratch").checked, muteScratch: $("muteScratch").checked, placeLow: $("placeLow").checked,
       rate2: $("rate2").checked, fps: $("fps").value, res: $("res").value, adapter: $("adapter").value,
       cutStyle: $("cutStyle").value, cutPace: $("cutPace").value, cutEffects: $("cutEffects").checked,
-      cutColour: $("cutColour").checked, cutLook: $("cutLook").value,
-      adTarget: $("adTarget").value, adTranscribe: $("adTranscribe").checked };
+      cutColour: $("cutColour").checked, cutInstallLuts: $("cutInstallLuts").checked, cutLook: $("cutLook").value,
+      cutV916: $("cutV916").checked, cutV11: $("cutV11").checked, cutV45: $("cutV45").checked, cutPreviewAspect: $("cutPreviewAspect").value,
+      adTarget: $("adTarget").value, adTranscribe: $("adTranscribe").checked, adLanguage: $("adLanguage").value,
+      adCut15: $("adCut15").checked, adCut6: $("adCut6").checked,
+      adV916: $("adV916").checked, adV11: $("adV11").checked, adV45: $("adV45").checked, adPreviewAspect: $("adPreviewAspect").value };
   }
 
   function restoreSettings() {
     const s = saved.settings || {};
-    for (const k of ["keepScratch", "muteScratch", "placeLow", "rate2", "cutEffects", "cutColour"]) if (k in s) $(k).checked = Boolean(s[k]);
+    for (const k of ["keepScratch", "muteScratch", "placeLow", "rate2", "cutEffects", "cutColour", "cutInstallLuts"]) if (k in s) $(k).checked = Boolean(s[k]);
     for (const k of ["fps", "res", "adapter", "cutStyle", "cutPace", "cutLook"]) if (s[k]) $(k).value = s[k];
     if (!s.cutLook) $("cutLook").value = "none";
+    for (const k of ["cutV916", "cutV11", "cutV45"]) if (k in s) $(k).checked = Boolean(s[k]);
+    $("cutPreviewAspect").value = s.cutPreviewAspect || "";
     if ("adTarget" in s) $("adTarget").value = s.adTarget;
     if ("adTranscribe" in s) $("adTranscribe").checked = Boolean(s.adTranscribe);
+    $("adLanguage").value = s.adLanguage || "en";
+    for (const k of ["adCut15", "adCut6", "adV916", "adV11", "adV45"]) if (k in s) $(k).checked = Boolean(s[k]);
+    $("adPreviewAspect").value = s.adPreviewAspect || "";
     if (!s.cutPace) $("cutPace").value = "1"; // "Normal", whatever the host does with `selected`
   }
 
@@ -126,7 +134,7 @@ function createView(deps) {
       banner(null);
     }
     const h = state.health;
-    $("about").innerHTML = `Panel 0.4.0 · Premiere ${esc(hostVersion || "?")}` +
+    $("about").innerHTML = `Panel 0.5.0 · Premiere ${esc(hostVersion || "?")}` +
       (h ? ` · Helper ${esc(h.version)} · Engine ${esc(h.engine_version)}<br>Cache: ${esc(h.cache_dir)}` : "");
   }
 
@@ -420,7 +428,10 @@ function createView(deps) {
   // ------------------------------------------------------------------ first cut
   function cutOptions() {
     return { style: $("cutStyle").value, pace: Number($("cutPace").value), effects: $("cutEffects").checked,
-      seed: state.cutSeed, place_low: $("placeLow").checked, colour: $("cutColour").checked, look: $("cutLook").value };
+      seed: state.cutSeed, place_low: $("placeLow").checked, colour: $("cutColour").checked, look: $("cutLook").value,
+      aspects: [["cutV916", "9:16"], ["cutV11", "1:1"], ["cutV45", "4:5"]].filter(([id]) => $(id).checked).map(([, a]) => a),
+      preview_aspect: $("cutPreviewAspect").value || null,
+      install_luts: $("cutColour").checked && $("cutInstallLuts").checked };
   }
 
   function renderShots(st) {
@@ -449,7 +460,7 @@ function createView(deps) {
     const st = out.stats || {};
     const lines = [];
     if (out.xml_path && out.imported) {
-      lines.push(`<span class="pass">First cut ready.</span> Sequence <b>${esc(out.sequence_name)}</b> is open in the timeline.`);
+      lines.push(`<span class="pass">First cut ready.</span> Sequence <b>${esc(out.sequence_name)}</b> is open in the timeline${out.method === "uxp" ? " (placed directly; every shot read back)" : ""}.`);
     } else if (out.xml_path) {
       lines.push(`<b>Cut written, but Premiere did not import it automatically.</b> In Premiere choose File &gt; Import and select:<br><span class="pos">${esc(out.xml_path)}</span>`);
     }
@@ -459,8 +470,14 @@ function createView(deps) {
       const c = out.colour;
       lines.push(`Colour: every take matched to <b>${esc(c.hero_name)}</b>${c.look !== "none" ? `, look ${esc(c.look)}` : ""}. LUTs: <span class="pos">${esc(c.folder)}</span>`);
       lines.push(`<span class="muted">Premiere cannot be given a LUT by a panel: in Lumetri Color &gt; Basic Correction &gt; Input LUT &gt; Browse, choose each take's <i>_match${c.look !== "none" ? "_" + esc(c.look) : ""}.cube</i> (the clip comment names it). The preview video already has it.</span>`);
+      const li = out.lut_install;
+      if (li && li.error) lines.push(`<span class="fail">LUTs not added to Lumetri</span> ${esc(li.error)}`);
+      else if (li) lines.push(`<span class="pass">LUTs added to Lumetri</span>: restart Premiere, then each take's LUT is in Lumetri Color &gt; Basic Correction &gt; Input LUT named <i>AutoSync - song - take</i>${li.look ? ", the look in Creative &gt; Look" : ""}.${li.warning ? ` <span class="fail">${esc(li.warning)}</span>` : ""}`);
     } else if (out.look_lut) {
       lines.push(`Look LUT: <span class="pos">${esc(out.look_lut)}</span> (Lumetri Color &gt; Creative &gt; Look &gt; Browse)`);
+    }
+    for (const v of out.versions || []) {
+      lines.push(`<b>${esc(v.aspect)}</b> ${v.imported ? `<span class="pass">imported</span> (${esc(v.sequence_name)})` : `File &gt; Import <span class="pos">${esc(v.xml_path)}</span>`}`);
     }
     if (out.used_shot_analysis === false) lines.push(`<span class="muted">Tip: Analyse shots first so the cut prefers sharp, well-exposed shots with visible faces and alternates close and wide.</span>`);
     for (const w of out.warnings || []) lines.push(`<span class="fail">Note</span> ${esc(w)}`);
@@ -476,8 +493,9 @@ function createView(deps) {
     $("cutOut").textContent = "Building the first cut…";
     const out = await firstcut.make(state.jobId, cutOptions());
     state.cut = { sequence_name: out.sequence_name, xml_path: out.xml_path, sequenceGuid: out.sequenceGuid, imported: out.imported,
-      stats: out.stats, warnings: out.warnings, sections: out.sections, tempo_bpm: out.tempo_bpm, notes: out.notes,
-      colour: out.colour || null, look_lut: out.look_lut || null, used_shot_analysis: out.used_shot_analysis };
+      stats: out.stats, warnings: out.warnings, sections: out.sections, tempo_bpm: out.tempo_bpm, notes: out.notes, method: out.method,
+      colour: out.colour || null, look_lut: out.look_lut || null, used_shot_analysis: out.used_shot_analysis, lut_install: out.lut_install || null,
+      versions: (out.versions || []).map((v) => ({ aspect: v.aspect, sequence_name: v.sequence_name, xml_path: v.xml_path, imported: v.imported })) };
     persist();
     renderCut(state.cut);
   }
@@ -541,6 +559,13 @@ function createView(deps) {
     for (const s of (r.shots || []).slice(0, 40)) {
       lines.push(`<span class="${s.status === "matched" ? "pass" : "fail"}">${esc(s.shot_id)}</span> ${esc(s.status === "missing" ? "missing" : s.name)} · ${esc(s.method || "")} ${esc(s.confidence || "")} · ${s.seconds} s <span class="muted">${esc(s.reason)}</span>`);
     }
+    for (const v of r.aspect_versions || []) {
+      lines.push(`<b>${esc(v.aspect)}</b> ${v.imported ? `<span class="pass">imported</span> (${esc(v.sequence_name)})` : `File &gt; Import <span class="pos">${esc(v.xml_path)}</span>`}`);
+    }
+    for (const v of r.versions || []) {
+      lines.push(`<b>${v.length} s version</b> ${v.imported ? `<span class="pass">ready</span> (${esc(v.sequence_name)})` : `File &gt; Import <span class="pos">${esc(v.xml_path)}</span>`}`
+        + ` · ${v.stats.matched}/${v.stats.shots} shots · dropped ${esc((v.dropped || []).join(", ") || "none")} <span class="muted">(${esc(v.how)})</span>`);
+    }
     for (const w of r.warnings || []) lines.push(`<span class="muted">${esc(w)}</span>`);
     if (r.preview && r.preview.path) lines.push(`Preview video: <span class="pos">${esc(r.preview.path)}</span>${r.preview.imported ? " (also in bin AutoSync)" : ""}`);
     el.className = `summary ${r.imported && !(st.missing || []).length ? "ok" : "bad"}`;
@@ -555,10 +580,17 @@ function createView(deps) {
     const target = $("adTarget").value;
     const req = { script_path: state.ad.script, clip_paths: state.clipPaths, sequence: sequenceSettings(),
       target_s: target ? Number(target) : null, takelog_path: state.ad.takelog, music_path: state.ad.music, vo_path: state.ad.vo,
-      transcribe: $("adTranscribe").checked };
+      transcribe: $("adTranscribe").checked, language: $("adLanguage").value,
+      cutdowns: [$("adCut15").checked ? 15 : null, $("adCut6").checked ? 6 : null].filter((x) => x && (!target || x < Number(target))),
+      aspects: [["adV916", "9:16"], ["adV11", "1:1"], ["adV45", "4:5"]].filter(([id]) => $(id).checked).map(([, a]) => a) };
+    req.analyse_shots = req.aspects.length > 0;
     const r = await firstcut.makeAd(req, (p) => { $("adOut").textContent = `${p.phase || "working"} ${p.total ? `${p.done}/${p.total}` : ""} ${p.current || ""}`; });
     state.ad.jobId = r.jobId;
-    state.ad.result = { sequence_name: r.sequence_name, xml_path: r.xml_path, imported: r.imported, stats: r.stats, shots: r.shots, warnings: r.warnings };
+    state.ad.result = { sequence_name: r.sequence_name, xml_path: r.xml_path, imported: r.imported, stats: r.stats, shots: r.shots,
+      warnings: (r.warnings || []).concat(r.notes || []), method: r.method,
+      versions: (r.versions || []).map((v) => ({ length: v.length, sequence_name: v.sequence_name, xml_path: v.xml_path, imported: v.imported,
+        stats: v.stats, dropped: v.dropped, how: v.how })),
+      aspect_versions: (r.aspect_versions || []).map((v) => ({ aspect: v.aspect, sequence_name: v.sequence_name, xml_path: v.xml_path, imported: v.imported })) };
     persist();
     renderAd(state.ad.result);
   }
@@ -568,7 +600,8 @@ function createView(deps) {
     $("adOut").className = "summary";
     $("adOut").textContent = "Rendering the ad preview…";
     const [w] = $("res").value.split("x").map(Number);
-    const p = await firstcut.adPreview(state.ad.jobId, Math.min(1280, w), (st) => { $("adOut").textContent = `Rendering the ad preview: shot ${st.done}/${st.total}`; });
+    const aspect = $("adPreviewAspect").value || null;
+    const p = await firstcut.adPreview(state.ad.jobId, Math.min(1280, w), (st) => { $("adOut").textContent = `Rendering the ad preview: shot ${st.done}/${st.total}`; }, aspect);
     state.ad.result = Object.assign({}, state.ad.result || {}, { preview: p });
     persist();
     renderAd(state.ad.result);
@@ -675,7 +708,7 @@ function createView(deps) {
     on("saveToken", "Save token", async () => { api.setToken($("tokenInput").value); await checkHelper(); });
     $("reviewList").addEventListener("click", onReviewClick);
     $("filter").addEventListener("change", renderReview);
-    for (const id of ["keepScratch", "muteScratch", "placeLow", "rate2", "fps", "res", "adapter", "cutStyle", "cutPace", "cutEffects", "cutColour", "cutLook", "adTarget", "adTranscribe"]) $(id).addEventListener("change", () => { persist(); render(); });
+    for (const id of ["keepScratch", "muteScratch", "placeLow", "rate2", "fps", "res", "adapter", "cutStyle", "cutPace", "cutEffects", "cutColour", "cutInstallLuts", "cutLook", "cutV916", "cutV11", "cutV45", "cutPreviewAspect", "adTarget", "adTranscribe", "adLanguage", "adCut15", "adCut6", "adV916", "adV11", "adV45", "adPreviewAspect"]) $(id).addEventListener("change", () => { persist(); render(); });
     renderSelftest(selftest.last());
     renderCut(state.cut);
     renderAdInputs();

@@ -82,10 +82,12 @@ class AdJobs:
         try:
             cut = run_ad_cut(req["script_path"], req["clip_paths"], fps, self.folder(jid),
                              takelog_path=req.get("takelog_path"), music_path=req.get("music_path"),
-                             vo_path=req.get("vo_path"), settings=AdSettings(target_s=req.get("target_s")),
-                             transcribe=req.get("transcribe", True), model=req.get("model", "base.en"),
+                             vo_path=req.get("vo_path"),
+                             settings=AdSettings(target_s=req.get("target_s"), language=req.get("language") or "en"),
+                             transcribe=req.get("transcribe", True), model=req.get("model"),
                              models_dir=os.path.join(self.cache_dir, "models"), cache_dir=self.cache_dir,
-                             analyse_shots=req.get("analyse_shots", False), progress=progress)
+                             analyse_shots=req.get("analyse_shots", False), progress=progress,
+                             cutdowns=req.get("cutdowns") or [])
             name = req.get("sequence_name") or ad_sequence_name(req["script_path"], req.get("target_s"))
             safe = "".join(ch if ch.isalnum() or ch in " -_" else "_" for ch in name)
             plan_path = os.path.join(self.folder(jid), safe + ".plan.json")
@@ -96,12 +98,49 @@ class AdJobs:
                 json.dump([c.__dict__ for c in cut.clips], f)
             info = write_ad_xml(cut.plan, cut.clips, os.path.join(self.folder(jid), safe + ".xml"), name,
                                 seq["width"], seq["height"], cut.music_s, cut.vo_s)
+            from export.uxp_payload import ad_payload
             result = {"sequence_name": name, "xml_path": info["path"], "plan_path": plan_path, "clips_path": clips_path,
+                      "uxp": ad_payload(cut.plan, cut.clips, name, seq["width"], seq["height"], cut.vo_s, cut.music_s),
                       "stats": cut.plan.stats, "warnings": cut.plan.warnings, "transcribed": cut.transcribed,
                       "shots": [{"order": a.order, "shot_id": a.shot_id, "kind": a.kind, "status": a.status, "name": a.name,
                                  "take": a.take, "method": a.method, "confidence": a.confidence, "reason": a.reason,
                                  "seconds": round((a.end - a.start) / float(fps), 3),
                                  "alternates": [x.model_dump() for x in a.alternates]} for a in cut.plan.shots]}
+            # Social versions of the main cut, framed on faces when the shots were analysed.
+            from export.reframe import ASPECTS, shot_centres
+            centres = shot_centres(cut.plan, fps, cut.shots_report)
+            result["centres"] = centres
+            result["aspect_versions"] = []
+            if req.get("aspects"):
+                from engine.probe import ProbeError, probe
+                from engine.shots import _rotation
+                sources = {}
+                for c in cut.clips:
+                    try:
+                        mi = probe(c.path)
+                        sources[c.clip_id] = (mi.height, mi.width) if _rotation(mi) in (90, 270) else (mi.width, mi.height)
+                    except ProbeError:
+                        pass
+                for asp in req["aspects"]:
+                    w_, h_ = ASPECTS[asp]
+                    aname = f"{name} - {asp}"
+                    asafe = "".join(ch if ch.isalnum() or ch in " -_" else "_" for ch in aname)
+                    ainfo = write_ad_xml(cut.plan, cut.clips, os.path.join(self.folder(jid), asafe + ".xml"), aname, w_, h_,
+                                         cut.music_s, cut.vo_s, frame={"width": w_, "height": h_, "centres": centres, "sources": sources})
+                    result["aspect_versions"].append({"aspect": asp, "sequence_name": aname, "xml_path": ainfo["path"],
+                                                      "framed_on_faces": cut.shots_report is not None})
+            result["versions"] = []
+            for v in cut.versions:
+                vname = ad_sequence_name(req["script_path"], v["length"], when=name.rsplit(" - ", 1)[-1])
+                vsafe = "".join(ch if ch.isalnum() or ch in " -_" else "_" for ch in vname)
+                vplan = os.path.join(self.folder(jid), vsafe + ".plan.json")
+                with open(vplan, "w", encoding="utf-8") as f:
+                    f.write(v["plan"].model_dump_json(indent=2))
+                vinfo = write_ad_xml(v["plan"], cut.clips, os.path.join(self.folder(jid), vsafe + ".xml"), vname,
+                                     seq["width"], seq["height"], cut.music_s, cut.vo_s)
+                result["versions"].append({"length": v["length"], "sequence_name": vname, "xml_path": vinfo["path"],
+                                           "plan_path": vplan, "stats": v["plan"].stats, "dropped": v["dropped"], "how": v["how"],
+                                           "uxp": ad_payload(v["plan"], cut.clips, vname, seq["width"], seq["height"], cut.vo_s, cut.music_s)})
             with self.lock:
                 self.jobs[jid].update(state="done", result=result)
                 self.jobs[jid]["progress"] = {"phase": "done", "done": 1, "total": 1, "current": ""}
@@ -117,7 +156,7 @@ class AdJobs:
             self._save(jid)
 
     # ------------------------------------------------------------------ preview
-    def start_preview(self, jid: str, width: int) -> dict:
+    def start_preview(self, jid: str, width: int, aspect: Optional[str] = None) -> dict:
         from export.preview import render_ad_preview
         d = self.get(jid)
         if d["state"] != "done":
@@ -128,8 +167,16 @@ class AdJobs:
         with open(r["clips_path"], encoding="utf-8") as f:
             clips = [Clip(**c) for c in json.load(f)]
         seq = d["request"]["sequence"]
-        height = int(round(width * seq["height"] / seq["width"] / 2)) * 2
-        mp4 = os.path.splitext(r["xml_path"])[0] + ".preview.mp4"
+        centres = None
+        if aspect:
+            from export.reframe import ASPECTS
+            aw, ah = ASPECTS[aspect]
+            width = min(width, aw)
+            height = int(round(width * ah / aw / 2)) * 2
+            centres = [tuple(x) for x in r.get("centres") or [(0.5, 0.5)] * len(plan.shots)]
+        else:
+            height = int(round(width * seq["height"] / seq["width"] / 2)) * 2
+        mp4 = os.path.splitext(r["xml_path"])[0] + (f".preview_{aspect.replace(':', 'x')}" if aspect else ".preview") + ".mp4"
         with self.lock:
             if self.previews.get(jid, {}).get("state") == "running":
                 raise AdJobError("PREVIEW_BUSY", "A preview is already rendering for this job", 409)
@@ -141,7 +188,7 @@ class AdJobs:
                     self.previews[jid].update(done=done, total=total)
             try:
                 render_ad_preview(plan, {c.clip_id: c.path for c in clips}, mp4, width=width, height=height,
-                                  workers=max(1, (os.cpu_count() or 2) // 2), progress=prog)
+                                  workers=max(1, (os.cpu_count() or 2) // 2), progress=prog, centres=centres)
                 with self.lock:
                     self.previews[jid]["state"] = "done"
             except Exception as e:  # reported, never swallowed

@@ -126,7 +126,7 @@ function createApi(deps) {
     adTemplate: (path) => call("POST", "/ad/template", { path }),
     adCreate: (req) => call("POST", "/ad/jobs", req),
     adJob: (id) => call("GET", `/ad/jobs/${encodeURIComponent(id)}`),
-    adPreviewStart: (id, width) => call("POST", `/ad/jobs/${encodeURIComponent(id)}/preview`, { width }),
+    adPreviewStart: (id, width, aspect) => call("POST", `/ad/jobs/${encodeURIComponent(id)}/preview`, { width, aspect: aspect || null }),
     adPreviewStatus: (id) => call("GET", `/ad/jobs/${encodeURIComponent(id)}/preview`),
     adSpeech: () => call("GET", "/ad/speech"),
   };

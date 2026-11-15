@@ -1,0 +1,860 @@
+{
+ "kind": "music",
+ "sequenceName": "AutoSync Cut - Song Master - fixture",
+ "fpsNum": 24000,
+ "fpsDen": 1001,
+ "ticksPerFrame": "10594584000",
+ "width": 1920,
+ "height": 1080,
+ "video": [
+  {
+   "path": "D:/shoot/takes/T019_preroll.mov",
+   "name": "T019_preroll.mov",
+   "startTicks": "10594584000",
+   "inTicks": "858161304000",
+   "outTicks": "2585078496000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T002_short.mov",
+   "name": "T002_short.mov",
+   "startTicks": "1737511776000",
+   "inTicks": "31783752000",
+   "outTicks": "328432104000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T008_slowmo.mov",
+   "name": "T008_slowmo.mov",
+   "startTicks": "2034160128000",
+   "inTicks": "391999608000",
+   "outTicks": "900539640000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T008_slowmo.mov",
+   "name": "T008_slowmo.mov",
+   "startTicks": "2542700160000",
+   "inTicks": "900539640000",
+   "outTicks": "1409079672000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T011_unrelated.mov",
+   "name": "T011_unrelated.mov",
+   "startTicks": "3051240192000",
+   "inTicks": "667458792000",
+   "outTicks": "1175998824000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T011_unrelated.mov",
+   "name": "T011_unrelated.mov",
+   "startTicks": "3559780224000",
+   "inTicks": "1175998824000",
+   "outTicks": "1684538856000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "4068320256000",
+   "inTicks": "180107928000",
+   "outTicks": "4492103616000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T006_clean.mov",
+   "name": "T006_clean.mov",
+   "startTicks": "8380315944000",
+   "inTicks": "95351256000",
+   "outTicks": "222486264000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "8507450952000",
+   "inTicks": "4619238624000",
+   "outTicks": "5254913664000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T006_clean.mov",
+   "name": "T006_clean.mov",
+   "startTicks": "9143125992000",
+   "inTicks": "858161304000",
+   "outTicks": "1112431320000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "9397396008000",
+   "inTicks": "5509183680000",
+   "outTicks": "5636318688000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T006_clean.mov",
+   "name": "T006_clean.mov",
+   "startTicks": "9524531016000",
+   "inTicks": "1239566328000",
+   "outTicks": "1366701336000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T001_clean.mov",
+   "name": "T001_clean.mov",
+   "startTicks": "9651666024000",
+   "inTicks": "52972920000",
+   "outTicks": "180107928000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T006_clean.mov",
+   "name": "T006_clean.mov",
+   "startTicks": "9778801032000",
+   "inTicks": "1493836344000",
+   "outTicks": "1748106360000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T001_clean.mov",
+   "name": "T001_clean.mov",
+   "startTicks": "10033071048000",
+   "inTicks": "434377944000",
+   "outTicks": "1070052984000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T006_clean.mov",
+   "name": "T006_clean.mov",
+   "startTicks": "10668746088000",
+   "inTicks": "2383781400000",
+   "outTicks": "2510916408000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T001_clean.mov",
+   "name": "T001_clean.mov",
+   "startTicks": "10795881096000",
+   "inTicks": "1197187992000",
+   "outTicks": "1324323000000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T025_lossy.mp4",
+   "name": "T025_lossy.mp4",
+   "startTicks": "10923016104000",
+   "inTicks": "74162088000",
+   "outTicks": "201297096000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T006_clean.mov",
+   "name": "T006_clean.mov",
+   "startTicks": "11050151112000",
+   "inTicks": "2765186424000",
+   "outTicks": "2892321432000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T001_clean.mov",
+   "name": "T001_clean.mov",
+   "startTicks": "11177286120000",
+   "inTicks": "1578593016000",
+   "outTicks": "2087133048000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T025_lossy.mp4",
+   "name": "T025_lossy.mp4",
+   "startTicks": "11685826152000",
+   "inTicks": "836972136000",
+   "outTicks": "964107144000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T006_clean.mov",
+   "name": "T006_clean.mov",
+   "startTicks": "11812961160000",
+   "inTicks": "3527996472000",
+   "outTicks": "3655131480000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T025_lossy.mp4",
+   "name": "T025_lossy.mp4",
+   "startTicks": "11940096168000",
+   "inTicks": "1091242152000",
+   "outTicks": "1345512168000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T001_clean.mov",
+   "name": "T001_clean.mov",
+   "startTicks": "12194366184000",
+   "inTicks": "2595673080000",
+   "outTicks": "3612753144000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T006_clean.mov",
+   "name": "T006_clean.mov",
+   "startTicks": "13211446248000",
+   "inTicks": "4926481560000",
+   "outTicks": "5180751576000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T025_lossy.mp4",
+   "name": "T025_lossy.mp4",
+   "startTicks": "13465716264000",
+   "inTicks": "2616862248000",
+   "outTicks": "2743997256000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T017_unrelated.mov",
+   "name": "T017_unrelated.mov",
+   "startTicks": "13592851272000",
+   "inTicks": "582702120000",
+   "outTicks": "709837128000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T025_lossy.mp4",
+   "name": "T025_lossy.mp4",
+   "startTicks": "13719986280000",
+   "inTicks": "2871132264000",
+   "outTicks": "3125402280000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T006_clean.mov",
+   "name": "T006_clean.mov",
+   "startTicks": "13974256296000",
+   "inTicks": "5689291608000",
+   "outTicks": "5816426616000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T017_unrelated.mov",
+   "name": "T017_unrelated.mov",
+   "startTicks": "14101391304000",
+   "inTicks": "709837128000",
+   "outTicks": "964107144000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T025_lossy.mp4",
+   "name": "T025_lossy.mp4",
+   "startTicks": "14355661320000",
+   "inTicks": "3506807304000",
+   "outTicks": "3888212328000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T001_clean.mov",
+   "name": "T001_clean.mov",
+   "startTicks": "14737066344000",
+   "inTicks": "5138373240000",
+   "outTicks": "5265508248000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T025_lossy.mp4",
+   "name": "T025_lossy.mp4",
+   "startTicks": "14864201352000",
+   "inTicks": "4015347336000",
+   "outTicks": "4142482344000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T001_clean.mov",
+   "name": "T001_clean.mov",
+   "startTicks": "14991336360000",
+   "inTicks": "5392643256000",
+   "outTicks": "5646913272000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T020_silent.mov",
+   "name": "T020_silent.mov",
+   "startTicks": "15245606376000",
+   "inTicks": "254270016000",
+   "outTicks": "508540032000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T025_lossy.mp4",
+   "name": "T025_lossy.mp4",
+   "startTicks": "15499876392000",
+   "inTicks": "4651022376000",
+   "outTicks": "5403237840000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T001_clean.mov",
+   "name": "T001_clean.mov",
+   "startTicks": "16252091856000",
+   "inTicks": "6653398752000",
+   "outTicks": "6780533760000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T025_lossy.mp4",
+   "name": "T025_lossy.mp4",
+   "startTicks": "16379226864000",
+   "inTicks": "5530372848000",
+   "outTicks": "5657507856000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T001_clean.mov",
+   "name": "T001_clean.mov",
+   "startTicks": "16506361872000",
+   "inTicks": "6907668768000",
+   "outTicks": "7034803776000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T025_lossy.mp4",
+   "name": "T025_lossy.mp4",
+   "startTicks": "16633496880000",
+   "inTicks": "5784642864000",
+   "outTicks": "6420317904000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "17269171920000",
+   "inTicks": "13380959592000",
+   "outTicks": "18974899944000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T018_drift.mov",
+   "name": "T018_drift.mov",
+   "startTicks": "22863112272000",
+   "inTicks": "572107536000",
+   "outTicks": "1080647568000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "23371652304000",
+   "inTicks": "19483439976000",
+   "outTicks": "19991980008000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T020_silent.mov",
+   "name": "T020_silent.mov",
+   "startTicks": "23880192336000",
+   "inTicks": "508540032000",
+   "outTicks": "1017080064000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T021_noaudio.mov",
+   "name": "T021_noaudio.mov",
+   "startTicks": "24388732368000",
+   "inTicks": "731026296000",
+   "outTicks": "1748106360000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T009_lossy.mp4",
+   "name": "T009_lossy.mp4",
+   "startTicks": "25405812432000",
+   "inTicks": "1779890112000",
+   "outTicks": "2796970176000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T005_room.mov",
+   "name": "T005_room.mov",
+   "startTicks": "26422892496000",
+   "inTicks": "1112431320000",
+   "outTicks": "1610376768000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T018_drift.mov",
+   "name": "T018_drift.mov",
+   "startTicks": "26920837944000",
+   "inTicks": "4629833208000",
+   "outTicks": "5138373240000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T005_room.mov",
+   "name": "T005_room.mov",
+   "startTicks": "27429377976000",
+   "inTicks": "2118916800000",
+   "outTicks": "3135996864000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T018_drift.mov",
+   "name": "T018_drift.mov",
+   "startTicks": "28446458040000",
+   "inTicks": "6155453304000",
+   "outTicks": "6663993336000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T005_room.mov",
+   "name": "T005_room.mov",
+   "startTicks": "28954998072000",
+   "inTicks": "3644536896000",
+   "outTicks": "4661616960000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T018_drift.mov",
+   "name": "T018_drift.mov",
+   "startTicks": "29972078136000",
+   "inTicks": "7681073400000",
+   "outTicks": "7935343416000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T021_noaudio.mov",
+   "name": "T021_noaudio.mov",
+   "startTicks": "30226348152000",
+   "inTicks": "1748106360000",
+   "outTicks": "2510916408000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T018_drift.mov",
+   "name": "T018_drift.mov",
+   "startTicks": "30989158200000",
+   "inTicks": "8698153464000",
+   "outTicks": "8952423480000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T015_preroll.mov",
+   "name": "T015_preroll.mov",
+   "startTicks": "31243428216000",
+   "inTicks": "423783360000",
+   "outTicks": "1186593408000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T024_noaudio.mov",
+   "name": "T024_noaudio.mov",
+   "startTicks": "32006238264000",
+   "inTicks": "466161696000",
+   "outTicks": "974701728000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T015_preroll.mov",
+   "name": "T015_preroll.mov",
+   "startTicks": "32514778296000",
+   "inTicks": "1695133440000",
+   "outTicks": "1949403456000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "32769048312000",
+   "inTicks": "28880835984000",
+   "outTicks": "30152186064000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T024_noaudio.mov",
+   "name": "T024_noaudio.mov",
+   "startTicks": "34040398392000",
+   "inTicks": "974701728000",
+   "outTicks": "1228971744000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T015_preroll.mov",
+   "name": "T015_preroll.mov",
+   "startTicks": "34294668408000",
+   "inTicks": "3475023552000",
+   "outTicks": "4746373632000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "35566018488000",
+   "inTicks": "31677806160000",
+   "outTicks": "32186346192000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T026_room.mov",
+   "name": "T026_room.mov",
+   "startTicks": "36074558520000",
+   "inTicks": "21189168000",
+   "outTicks": "529729200000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "36583098552000",
+   "inTicks": "32694886224000",
+   "outTicks": "33701371704000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T012_room.mov",
+   "name": "T012_room.mov",
+   "startTicks": "37589584032000",
+   "inTicks": "678053376000",
+   "outTicks": "1186593408000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T027_slowmo.mov",
+   "name": "T027_slowmo.mov",
+   "startTicks": "38098124064000",
+   "inTicks": "307242936000",
+   "outTicks": "2341403064000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T027_slowmo.mov",
+   "name": "T027_slowmo.mov",
+   "startTicks": "40132284192000",
+   "inTicks": "2341403064000",
+   "outTicks": "2595673080000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T026_room.mov",
+   "name": "T026_room.mov",
+   "startTicks": "40386554208000",
+   "inTicks": "4333184856000",
+   "outTicks": "4587454872000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T016_room.mov",
+   "name": "T016_room.mov",
+   "startTicks": "40640824224000",
+   "inTicks": "2998267272000",
+   "outTicks": "5032427400000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T010_avoffset.mov",
+   "name": "T010_avoffset.mov",
+   "startTicks": "42674984352000",
+   "inTicks": "561512952000",
+   "outTicks": "815782968000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "42929254368000",
+   "inTicks": "39041042040000",
+   "outTicks": "40312392120000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T003_room.mov",
+   "name": "T003_room.mov",
+   "startTicks": "44200604448000",
+   "inTicks": "402594192000",
+   "outTicks": "656864208000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T010_avoffset.mov",
+   "name": "T010_avoffset.mov",
+   "startTicks": "44454874464000",
+   "inTicks": "2341403064000",
+   "outTicks": "2595673080000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T003_room.mov",
+   "name": "T003_room.mov",
+   "startTicks": "44709144480000",
+   "inTicks": "911134224000",
+   "outTicks": "1419674256000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T010_avoffset.mov",
+   "name": "T010_avoffset.mov",
+   "startTicks": "45217684512000",
+   "inTicks": "3104213112000",
+   "outTicks": "3612753144000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T003_room.mov",
+   "name": "T003_room.mov",
+   "startTicks": "45726224544000",
+   "inTicks": "1928214288000",
+   "outTicks": "3951779832000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T013_room.mov",
+   "name": "T013_room.mov",
+   "startTicks": "47749790088000",
+   "inTicks": "1271350080000",
+   "outTicks": "2288430144000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "48766870152000",
+   "inTicks": "44878657824000",
+   "outTicks": "46912817952000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T013_room.mov",
+   "name": "T013_room.mov",
+   "startTicks": "50801030280000",
+   "inTicks": "4322590272000",
+   "outTicks": "4576860288000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T014_long.mov",
+   "name": "T014_long.mov",
+   "startTicks": "51055300296000",
+   "inTicks": "47167087968000",
+   "outTicks": "48946978080000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T017_unrelated.mov",
+   "name": "T017_unrelated.mov",
+   "startTicks": "52835190408000",
+   "inTicks": "964107144000",
+   "outTicks": "1218377160000",
+   "audioTrack": 1,
+   "keepAudio": false
+  },
+  {
+   "path": "D:/shoot/takes/T020_silent.mov",
+   "name": "T020_silent.mov",
+   "startTicks": "53089460424000",
+   "inTicks": "1017080064000",
+   "outTicks": "2362592232000",
+   "audioTrack": 1,
+   "keepAudio": false
+  }
+ ],
+ "audio": [
+  {
+   "path": "D:/shoot/Song Master.wav",
+   "name": "Song Master.wav",
+   "startTicks": "0",
+   "inTicks": "0",
+   "outTicks": "54434972592000",
+   "audioTrack": 0
+  }
+ ],
+ "muteAudioTracks": [
+  1
+ ],
+ "markers": [
+  {
+   "startTicks": "0",
+   "durationTicks": "4068320256000",
+   "name": "Intro",
+   "comment": "label A, 8 bars, energy 0.50",
+   "colour": "green"
+  },
+  {
+   "startTicks": "4068320256000",
+   "durationTicks": "4057725672000",
+   "name": "Verse 1",
+   "comment": "label B, 8 bars, energy 0.50",
+   "colour": "blue"
+  },
+  {
+   "startTicks": "8126045928000",
+   "durationTicks": "4068320256000",
+   "name": "Chorus 1",
+   "comment": "label C, 8 bars, energy 0.80",
+   "colour": "red"
+  },
+  {
+   "startTicks": "12194366184000",
+   "durationTicks": "4057725672000",
+   "name": "Verse 2",
+   "comment": "label B, 8 bars, energy 0.50",
+   "colour": "blue"
+  },
+  {
+   "startTicks": "16252091856000",
+   "durationTicks": "4068320256000",
+   "name": "Chorus 2",
+   "comment": "label C, 8 bars, energy 0.80",
+   "colour": "red"
+  },
+  {
+   "startTicks": "20320412112000",
+   "durationTicks": "4068320256000",
+   "name": "Outro",
+   "comment": "label C, 8 bars, energy 0.50",
+   "colour": "green"
+  },
+  {
+   "startTicks": "24388732368000",
+   "durationTicks": "4057725672000",
+   "name": "Outro",
+   "comment": "label C, 8 bars, energy 0.50",
+   "colour": "green"
+  },
+  {
+   "startTicks": "28446458040000",
+   "durationTicks": "4068320256000",
+   "name": "Outro",
+   "comment": "label C, 8 bars, energy 0.50",
+   "colour": "green"
+  },
+  {
+   "startTicks": "32514778296000",
+   "durationTicks": "4068320256000",
+   "name": "Outro",
+   "comment": "label C, 8 bars, energy 0.50",
+   "colour": "green"
+  },
+  {
+   "startTicks": "36583098552000",
+   "durationTicks": "4057725672000",
+   "name": "Outro",
+   "comment": "label C, 8 bars, energy 0.50",
+   "colour": "green"
+  },
+  {
+   "startTicks": "40640824224000",
+   "durationTicks": "4068320256000",
+   "name": "Outro",
+   "comment": "label C, 8 bars, energy 0.50",
+   "colour": "green"
+  },
+  {
+   "startTicks": "44709144480000",
+   "durationTicks": "4057725672000",
+   "name": "Outro",
+   "comment": "label C, 8 bars, energy 0.50",
+   "colour": "green"
+  },
+  {
+   "startTicks": "48766870152000",
+   "durationTicks": "4068320256000",
+   "name": "Outro",
+   "comment": "label C, 8 bars, energy 0.50",
+   "colour": "green"
+  },
+  {
+   "startTicks": "52835190408000",
+   "durationTicks": "1599782184000",
+   "name": "Outro",
+   "comment": "label C, 8 bars, energy 0.50",
+   "colour": "green"
+  }
+ ],
+ "transitions": [
+  {
+   "atTicks": "16252091856000",
+   "frames": 2,
+   "kind": "dip_white"
+  }
+ ]
+}

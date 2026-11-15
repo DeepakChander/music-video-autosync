@@ -42,7 +42,8 @@ function createFake(knobs) {
 
   class RectF { constructor() { this.width = 0; this.height = 0; } }
 
-  const Constants = { TrackItemType: { EMPTY: 0, CLIP: 1 }, MediaType: { ANY: "any", VIDEO: "video", AUDIO: "audio" } };
+  const Constants = { TrackItemType: { EMPTY: 0, CLIP: 1 }, MediaType: { ANY: "any", VIDEO: "video", AUDIO: "audio" },
+    MarkerColor: { GREEN: 0, RED: 1, ORANGE: 3, YELLOW: 4, BLUE: 6, CYAN: 7, MAGENTA: 5 } };
 
   class Action {
     constructor(desc, fn) { this.desc = desc; this.fn = fn; }
@@ -106,7 +107,40 @@ function createFake(knobs) {
       requireLock("createMoveAction");
       return new Action(`move item ${this.clip.name}`, () => { this.start += BigInt(delta.ticks); });
     }
+    createSetDisabledAction(d) {
+      requireLock("createSetDisabledAction");
+      return new Action(`disable ${this.clip.name}`, () => { this.disabled = Boolean(d); });
+    }
+    createAddVideoTransitionAction(tr, opts) {
+      requireLock("createAddVideoTransitionAction");
+      return new Action(`transition ${tr.name}`, () => { (this.transitions = this.transitions || []).push({ name: tr.name, start: opts.applyToStart, duration: opts.duration }); });
+    }
   }
+
+  class Marker {
+    constructor(name, type, start, duration, comment) { this.name = name; this.type = type; this.start = BigInt(start.ticks); this.duration = BigInt(duration.ticks); this.comment = comment; this.colour = null; }
+    async getStart() { return new TickTime(this.start); }
+    async getName() { return this.name; }
+    createSetColorByIndexAction(i) { requireLock("createSetColorByIndexAction"); return new Action("marker colour", () => { this.colour = i; }); }
+  }
+  Marker.MARKER_TYPE_COMMENT = "Comment";
+  class MarkerList {
+    constructor() { this.items = []; }
+    createAddMarkerAction(name, type, start, duration, comment) {
+      requireLock("createAddMarkerAction");
+      return new Action(`marker ${name}`, () => { this.items.push(new Marker(name, type, start, duration, comment)); });
+    }
+    async getMarkers() { return this.items.slice(); }
+  }
+  const Markers = { async getMarkers(seq) { seq.markers = seq.markers || new MarkerList(); return seq.markers; } };
+  class AddTransitionOptions {
+    setApplyToStart(b) { this.applyToStart = b; return this; }
+    setDuration(t) { this.duration = BigInt(t.ticks); return this; }
+  }
+  const TransitionFactory = {
+    async getVideoTransitionMatchNames() { return ["AE.ADBE Cross Dissolve New", "AE.ADBE Dip To White", "Cross Dissolve (Legacy)"]; },
+    async createVideoTransition(name) { return { name }; },
+  };
 
   class Track {
     constructor(kind) { this.kind = kind; this.items = []; this.muted = false; }
@@ -328,6 +362,7 @@ function createFake(knobs) {
   const ProjectUtils = { async getSelection() { return { async getItems() { return project.selection.slice(); } }; } };
 
   const ppro = { Project, TickTime, FrameRate, RectF, Constants, ProjectItem, FolderItem, ClipProjectItem, SequenceEditor, ProjectUtils };
+  if (k.markerApi !== false) Object.assign(ppro, { Markers, Marker, TransitionFactory, AddTransitionOptions });
   return { ppro, project, log, knobs: k, Sequence, Track, TrackItem };
 }
 

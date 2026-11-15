@@ -322,3 +322,65 @@ test("shot analysis: polls the helper until done and reports failures", async ()
   const bad = { shots: async () => ({ state: "running" }), shotsStatus: async () => ({ state: "failed", error: "OpenCV missing" }) };
   await assert.rejects(createFirstCut(fake.ppro, pr, bad, async () => {}).analyseShots("J1"), /OpenCV missing/);
 });
+
+const { createCutPlacer } = require("../js/placement/cut.js");
+
+test("first cut falls back to direct placement when Premiere builds no sequence from the XML", async () => {
+  const { fake, pr, uxp } = setup({ xmlImport: "none" });
+  const payload = JSON.parse(fs.readFileSync(path.join(FIX, "cut_uxp.json"), "utf8"));
+  const api = { cut: async () => ({ sequence_name: payload.sequenceName, xml_path: path.join(FIX, "cut.xml"), stats: {}, warnings: [], sections: [], uxp: payload }) };
+  const fc = createFirstCut(fake.ppro, pr, api, async () => {}, createCutPlacer(fake.ppro, core, pr, uxp));
+  const out = await fc.make("J1", {});
+  assert.strictEqual(out.method, "uxp");
+  assert.strictEqual(out.imported, true, JSON.stringify(out.placement));
+  assert.deepStrictEqual(out.placement.mismatches, []);
+  const seq = (await fake.project.getSequences()).find((s) => s.name === payload.sequenceName);
+  const v1 = seq.video[0].items.slice().sort((a, b) => (a.start < b.start ? -1 : 1));
+  assert.strictEqual(v1.length, payload.video.length);
+  for (let i = 0; i < v1.length; i++) {
+    assert.strictEqual(String(v1[i].start), payload.video[i].startTicks);
+    assert.strictEqual(String(v1[i].inTicks), payload.video[i].inTicks);
+    assert.strictEqual(String(v1[i].start + v1[i].length), String(BigInt(payload.video[i].startTicks) + BigInt(payload.video[i].outTicks) - BigInt(payload.video[i].inTicks)));
+  }
+  assert.strictEqual(seq.audio[0].items.length, 1, "the song alone on A1");
+  assert.strictEqual(seq.audio[0].items[0].clip.path, payload.audio[0].path);
+  assert.strictEqual(seq.audio[1].muted, true, "camera sound on A2 muted");
+  assert.strictEqual(seq.markers.items.length, payload.markers.length);
+  assert.ok(seq.markers.items.every((m) => m.colour != null), "marker colours set");
+  const withTr = v1.filter((x) => x.transitions && x.transitions.length);
+  assert.strictEqual(withTr.length, payload.transitions.length);
+  assert.ok(!/Legacy/.test(withTr[0].transitions[0].name), "the current transition, not the legacy one");
+});
+
+test("ad cut placed directly: picture-only shots' sound is disabled, VO and music on their tracks", async () => {
+  const { fake, pr, uxp } = setup({ xmlImport: "none" });
+  const clips = RESULT.clips.filter((c) => c.source_fps && c.has_audio).slice(0, 3);
+  const tpf = core.ticksPerFrame(25, 1);
+  const t = (f) => String(BigInt(f) * tpf);
+  const payload = { kind: "ad", sequenceName: "AutoSync Ad - test", fpsNum: 25, fpsDen: 1, ticksPerFrame: String(tpf), width: 1920, height: 1080,
+    video: [
+      { path: clips[0].path, name: "a", startTicks: t(0), inTicks: t(25), outTicks: t(75), audioTrack: 0, keepAudio: false },
+      { path: clips[1].path, name: "b", startTicks: t(50), inTicks: t(10), outTicks: t(60), audioTrack: 0, keepAudio: true },
+      { path: clips[2].path, name: "c", startTicks: t(100), inTicks: t(0), outTicks: t(50), audioTrack: 0, keepAudio: false }],
+    audio: [{ path: RESULT.master.path, name: "music", startTicks: t(0), inTicks: t(0), outTicks: t(150), audioTrack: 2 }],
+    muteAudioTracks: [], markers: [{ startTicks: t(0), durationTicks: t(50), name: "1A", comment: "", colour: "green" },
+      { startTicks: t(150), durationTicks: t(25), name: "MISSING 4A", comment: "", colour: "red" }], transitions: [] };
+  const rep = await createCutPlacer(fake.ppro, core, pr, uxp).place(payload);
+  assert.ok(rep.ok, JSON.stringify(rep));
+  const seq = (await fake.project.getSequences()).find((s) => s.name === "AutoSync Ad - test");
+  const a1 = seq.audio[0].items;
+  const byStart = (s) => a1.find((x) => String(x.start) === s);
+  assert.strictEqual(byStart(t(0)).disabled, true);
+  assert.ok(!byStart(t(50)).disabled, "dialogue shot keeps its sound");
+  assert.strictEqual(byStart(t(100)).disabled, true);
+  assert.strictEqual(seq.audio[2].items[0].clip.path, RESULT.master.path, "music bed on A3");
+  assert.deepStrictEqual(seq.markers.items.map((m) => m.colour), [0, 1]);
+});
+
+test("direct placement without a marker or transition API says so instead of failing", async () => {
+  const { fake, pr, uxp } = setup({ markerApi: false });
+  const payload = JSON.parse(fs.readFileSync(path.join(FIX, "cut_uxp.json"), "utf8"));
+  const rep = await createCutPlacer(fake.ppro, core, pr, uxp).place(payload);
+  assert.ok(rep.ok);
+  assert.ok(rep.notes.some((n) => /no marker API/.test(n)) && rep.notes.some((n) => /no transition API/.test(n)));
+});

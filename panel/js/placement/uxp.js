@@ -173,7 +173,7 @@ function createUxpAdapter(ppro, core, pr, common) {
     return { ok, pid, actual: v ? v.startTicks : null, expected: String(it.startTicks) };
   }
 
-  return { name: "uxp", place, applyOverride };
+  return { name: "uxp", placeItem, place, applyOverride };
 }
 
 module.exports = { createUxpAdapter };

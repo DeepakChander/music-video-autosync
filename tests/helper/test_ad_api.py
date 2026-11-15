@@ -56,7 +56,7 @@ def test_script_check_template_and_speech_status(client, shoot, tmp_path):
     t = client.post("/ad/template", json={"path": str(tmp_path)}).json()
     assert os.path.isfile(t["path"]) and "dialogue" in open(t["path"]).read()
     sp = client.get("/ad/speech").json()
-    assert set(sp["models"]) == {"tiny.en", "base.en", "small.en"}
+    assert {"tiny.en", "base.en", "small.en", "base"} <= set(sp["models"])
 
 
 @needs_ffmpeg
@@ -95,3 +95,27 @@ def test_ad_job_errors(client, tmp_path):
                                         "transcribe": False}).json()["id"]
     st = wait(client, f"/ad/jobs/{jid}")
     assert st["state"] == "failed" and st["error"]
+
+
+@needs_ffmpeg
+def test_ad_social_version_and_vertical_preview(client, shoot):
+    clips = [str(shoot / f) for f in sorted(os.listdir(shoot)) if f.endswith(".mov")]
+    jid = client.post("/ad/jobs", json={"script_path": str(shoot / "script.csv"), "clip_paths": clips, "sequence": SEQ,
+                                        "takelog_path": str(shoot / "log.csv"), "transcribe": False,
+                                        "aspects": ["9:16"], "analyse_shots": True, "cutdowns": [4]}).json()["id"]
+    st = wait(client, f"/ad/jobs/{jid}")
+    assert st["state"] == "done", st
+    res = st["result"]
+    av = res["aspect_versions"]
+    assert [v["aspect"] for v in av] == ["9:16"] and av[0]["framed_on_faces"] is True
+    root = ET.parse(av[0]["xml_path"]).getroot()
+    assert root.find("sequence/media/video/format/samplecharacteristics/height").text == "1920"
+    assert [v["length"] for v in res["versions"]] == [4.0]
+    assert res["versions"][0]["stats"]["seconds"] == 4.0
+    r = client.post(f"/ad/jobs/{jid}/preview", json={"width": 360, "aspect": "9:16"})
+    assert r.status_code == 200, r.text
+    pv = wait(client, f"/ad/jobs/{jid}/preview")
+    assert pv["state"] == "done", pv
+    wh = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
+                         "-of", "csv=p=0", pv["path"]], check=True, stdout=subprocess.PIPE).stdout.decode().strip()
+    assert wh == "360,640"

@@ -46,9 +46,21 @@ def _finv(t):
     return np.where(t > d, t ** 3, 3 * d * d * (t - 4 / 29))
 
 
+def mat3(x: np.ndarray, m: np.ndarray) -> np.ndarray:
+    """(..., 3) @ m.T written as per-channel arithmetic. Matrix products go through BLAS, which
+    crashed (Windows access violation) when shot-analysis threads called it at the same time."""
+    x0, x1, x2 = x[..., 0], x[..., 1], x[..., 2]
+    return np.stack([m[r, 0] * x0 + m[r, 1] * x1 + m[r, 2] * x2 for r in range(3)], axis=-1)
+
+
+def luma(x: np.ndarray) -> np.ndarray:
+    """Rec.709 luma of (..., 3) RGB, per-channel arithmetic (no BLAS)."""
+    return 0.2126 * x[..., 0] + 0.7152 * x[..., 1] + 0.0722 * x[..., 2]
+
+
 def rgb_to_lab(rgb: np.ndarray) -> np.ndarray:
     """(..., 3) encoded RGB 0..1 -> (..., 3) Lab (L 0..100)."""
-    xyz = srgb_to_linear(rgb) @ _M_RGB2XYZ.T / _WHITE
+    xyz = mat3(srgb_to_linear(rgb), _M_RGB2XYZ) / _WHITE
     fx, fy, fz = _f(xyz[..., 0]), _f(xyz[..., 1]), _f(xyz[..., 2])
     return np.stack([116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)], axis=-1)
 
@@ -58,7 +70,7 @@ def lab_to_rgb(lab: np.ndarray) -> np.ndarray:
     fx = fy + lab[..., 1] / 500
     fz = fy - lab[..., 2] / 200
     xyz = np.stack([_finv(fx), _finv(fy), _finv(fz)], axis=-1) * _WHITE
-    return linear_to_srgb(xyz @ _M_XYZ2RGB.T)
+    return linear_to_srgb(mat3(xyz, _M_XYZ2RGB))
 
 
 class LabStats(BaseModel):
@@ -73,7 +85,7 @@ def lab_stats(rgb: np.ndarray, lo: float = 0.04, hi: float = 0.96) -> Optional[L
     px = rgb.reshape(-1, 3)
     # 8-bit input by type, never by value (a float a hair above 1.0 is still 0..1 data)
     px = px.astype(np.float64) / 255.0 if np.issubdtype(px.dtype, np.integer) else np.clip(px.astype(np.float64), 0.0, 1.0)
-    y = px @ np.array([0.2126, 0.7152, 0.0722])
+    y = luma(px)
     keep = (y > lo) & (y < hi)
     if keep.sum() < 50:
         return None
@@ -332,3 +344,60 @@ def plan_colour(stats: dict[str, LabStats], names: dict[str, str], folder: str, 
     look_lut = write_cube(os.path.join(folder, f"look_{look}.cube"), build_lut(None, look, size), f"AutoSync look {look}") \
         if look != "none" else None
     return ColourPlan(hero=hero, hero_name=names.get(hero, hero), look=look, folder=folder, look_lut=look_lut, takes=takes)
+
+
+# --------------------------------------------------------------------------------------
+# Lumetri's LUT folders (Adobe, "Install Custom LUT files", Premiere Pro 24.0 or later):
+#   .../LUTs/Technical -> Lumetri Color > Basic Correction > Input LUT
+#   .../LUTs/Creative  -> Lumetri Color > Creative > Look
+# Per user: macOS ~/Library/Application Support/Adobe/Common/LUTs, Windows %APPDATA%\Adobe\Common\LUTs.
+# Premiere scans them at launch (restart), lists only files directly in the folder (no subfolders),
+# and community reports put the list limit near 100 LUTs.
+# --------------------------------------------------------------------------------------
+
+def lumetri_lut_root() -> Optional[str]:
+    import sys
+    env = os.environ.get("AUTOSYNC_LUT_DIR")
+    if env:
+        return env
+    if sys.platform == "darwin":
+        return os.path.expanduser("~/Library/Application Support/Adobe/Common/LUTs")
+    if os.name == "nt":
+        base = os.environ.get("APPDATA") or os.path.expanduser("~\\AppData\\Roaming")
+        return os.path.join(base, "Adobe", "Common", "LUTs")
+    return None
+
+
+def _safe(name: str, n: int = 60) -> str:
+    return "".join(ch if ch.isalnum() or ch in " -_." else "_" for ch in name).strip()[:n]
+
+
+def install_luts(plan: "ColourPlan", song: str) -> dict:
+    """Copy the take LUTs (match + look) into Technical and the look into Creative so they appear in
+    Lumetri's menus after a Premiere restart. This song's earlier AutoSync LUTs are replaced."""
+    import shutil
+    root = lumetri_lut_root()
+    if root is None:
+        raise ValueError("Premiere's LUT folders exist on macOS and Windows only")
+    tech, crea = os.path.join(root, "Technical"), os.path.join(root, "Creative")
+    os.makedirs(tech, exist_ok=True)
+    os.makedirs(crea, exist_ok=True)
+    prefix = f"AutoSync - {_safe(song, 40)} - "
+    for f in os.listdir(tech):
+        if f.startswith(prefix) and f.lower().endswith(".cube"):
+            os.remove(os.path.join(tech, f))
+    files = []
+    for tc in plan.takes.values():
+        if not tc.final_lut:
+            continue
+        dst = os.path.join(tech, prefix + _safe(os.path.splitext(tc.name)[0]) + ".cube")
+        shutil.copyfile(tc.final_lut, dst)
+        files.append(dst)
+    look = None
+    if plan.look_lut:
+        look = os.path.join(crea, f"AutoSync - {plan.look}.cube")
+        shutil.copyfile(plan.look_lut, look)
+    count = sum(1 for f in os.listdir(tech) if f.lower().endswith(".cube"))
+    return {"technical_dir": tech, "creative_dir": crea, "files": files, "look": look, "restart_needed": True,
+            "warning": (f"{count} LUTs in {tech}: Premiere lists about 100; remove old ones you no longer need."
+                        if count > 90 else None)}

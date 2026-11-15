@@ -109,3 +109,23 @@ def test_shot_analysis_then_cut_with_colour_and_look(client, job):
     assert pv["state"] == "done", pv
     r = client.post(f"/jobs/{job}/cut", json={"look": "sepia"})
     assert r.status_code == 422
+
+
+def test_social_versions_and_lut_install(client, job, tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOSYNC_LUT_DIR", str(tmp_path / "LUTs"))
+    if client.get(f"/jobs/{job}/shots").status_code == 404:
+        client.post(f"/jobs/{job}/shots", json={"faces": True})
+        _wait_state(client, f"/jobs/{job}/shots")
+    out = client.post(f"/jobs/{job}/cut", json={"colour": True, "look": "cool", "install_luts": True,
+                                               "aspects": ["9:16", "1:1"]}).json()
+    assert [v["aspect"] for v in out["versions"]] == ["9:16", "1:1"]
+    for v in out["versions"]:
+        root = ET.parse(v["xml_path"]).getroot()
+        fmt = root.find("sequence/media/video/format/samplecharacteristics")
+        assert (int(fmt.findtext("width")), int(fmt.findtext("height"))) == (v["width"], v["height"])
+        assert root.find(".//clipitem/filter/effect[effectid='basic']") is not None
+    li = out["lut_install"]
+    assert li and not li.get("error") and li["files"] and all(os.path.isfile(f) for f in li["files"])
+    assert os.path.isfile(li["look"])
+    r = client.post(f"/jobs/{job}/cut", json={"aspects": ["21:9"]})
+    assert r.status_code == 422

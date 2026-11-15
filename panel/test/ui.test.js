@@ -141,12 +141,16 @@ test("each button performs its real operation", async () => {
   assert.match(doc.els.get("shotsInfo").textContent, /2 clips analysed: 1 close, 0 medium, 1 wide · 2 camera setups/);
   doc.els.get("cutStyle").value = "hype";
   doc.els.get("cutColour").checked = true;
+  doc.els.get("cutV916").checked = true;
+  doc.els.get("cutInstallLuts").checked = true;
+  doc.els.get("cutPreviewAspect").value = "9:16";
   doc.els.get("cutLook").value = "warm";
   await click("makeCut");
   const mk = calls.filter((c) => c[0] === "firstcut.make");
   assert.strictEqual(mk.length, 1);
   assert.strictEqual(mk[0][1], "J1");
-  assert.deepStrictEqual(Object.assign({}, mk[0][2]), { style: "hype", pace: 1, effects: true, seed: 0, place_low: false, colour: true, look: "warm" });
+  assert.deepStrictEqual(Object.assign({}, mk[0][2]), { style: "hype", pace: 1, effects: true, seed: 0, place_low: false, colour: true, look: "warm",
+    aspects: ["9:16"], preview_aspect: "9:16", install_luts: true });
   assert.match(doc.els.get("cutOut").innerHTML, /First cut ready/);
   await click("cutVariation");
   assert.strictEqual(calls.filter((c) => c[0] === "firstcut.make")[1][2].seed, 1, "another variation = next seed");
@@ -158,13 +162,18 @@ test("each button performs its real operation", async () => {
   assert.match(doc.els.get("adScriptInfo").innerHTML, /3 shots: 1 dialogue, 1 vo, 1 mos/);
   await click("adPickTakelog");
   assert.strictEqual(view.state.ad.takelog, "D:/ad/log.csv");
-  doc.els.get("adTarget").value = "15";
+  doc.els.get("adLanguage").value = "hi";
+  doc.els.get("adTarget").value = "30";
+  doc.els.get("adCut15").checked = true;
+  doc.els.get("adCut6").checked = true;
   await click("makeAd");
   const ad = calls.filter((c) => c[0] === "firstcut.makeAd");
   assert.strictEqual(ad.length, 1);
   assert.strictEqual(ad[0][1].script_path, "D:/ad/script.docx");
-  assert.strictEqual(ad[0][1].target_s, 15);
+  assert.strictEqual(ad[0][1].target_s, 30);
+  assert.deepStrictEqual(ad[0][1].cutdowns, [15, 6]);
   assert.strictEqual(ad[0][1].takelog_path, "D:/ad/log.csv");
+  assert.strictEqual(ad[0][1].language, "hi");
   assert.ok(ad[0][1].clip_paths.length >= 1 && ad[0][1].sequence.fps_num);
   assert.match(doc.els.get("adOut").innerHTML, /Missing<\/span> 3A/);
   await click("adPreview");

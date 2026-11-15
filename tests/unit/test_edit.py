@@ -121,10 +121,10 @@ def test_uncovered_song_parts_get_story_footage_or_a_reported_gap(song):
     # With a story clip (a 2x take is story: not lip-synced at native speed), holes are filled.
     clips = [clip("A", 20.0, 60.0), clip("B", 20.0, 60.0), clip("slow", 0.0, 30.0, rate=2.0)]
     res = result(clips, d)
-    plan = build_plan(res, mm, EditSettings(style="performance"))
+    plan = build_plan(res, mm, EditSettings(style="performance", slowmo=False))
     assert validate_plan(plan, res, mm) == []
     perf_ids = {t.clip.clip_id for t in takes_from_result(res, plan.settings)[0]}
-    assert "slow" not in perf_ids
+    assert "slow" not in perf_ids, "without conforming, a 2x take is story footage"
     assert plan.stats["gap_frames"] == 0 and plan.stats["story_shots"] > 0
     # Without story footage the holes stay empty and are reported, never filled with a guess.
     res2 = result(clips[:2], d)
@@ -143,3 +143,20 @@ def test_effects_by_style(song):
     none = build_plan(res, mm, EditSettings(style="hype", effects=False))
     assert not any(sh.effects for sh in none.shots)
     assert [m.name for m in hype.markers][0] in ("Intro", "Verse 1", "Section 1", "Chorus 1", "Pre Chorus 1", "Bridge 1")
+
+
+def test_slow_motion_takes_play_at_half_speed_in_sync(song):
+    s, mm = song
+    d = s.duration_s
+    clips = [clip("A", 0.0, d + 1), clip("B", 0.0, d + 1), clip("slow", 0.0, d / 2 + 1, rate=2.0)]
+    res = result(clips, d)
+    plan = build_plan(res, mm, EditSettings(style="ballad", slowmo=True))
+    assert validate_plan(plan, res, mm) == []
+    slow = [sh for sh in plan.shots if sh.clip_id == "slow"]
+    assert slow, "the conformed take is used"
+    take = next(t for t in takes_from_result(res, plan.settings)[0] if t.clip.clip_id == "slow")
+    for sh in slow:
+        assert sh.speed == 0.5
+        exact = take.in_frame + (sh.start - take.start) / 2.0
+        assert abs(sh.src_in - exact) <= 0.5, "lip sync within half a source frame"
+        assert abs((sh.src_out - sh.src_in) - (sh.end - sh.start) / 2.0) <= 1

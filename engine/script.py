@@ -37,6 +37,7 @@ class ScriptShot(BaseModel):
     board: Optional[str] = None  # storyboard image path
     notes: str = ""
     super_text: str = ""
+    versions: list[int] = Field(default_factory=list)   # cutdown lengths this shot belongs to (script columns "in 15", "in 6" ...)
 
 
 class Script(BaseModel):
@@ -125,6 +126,13 @@ def _rows_to_shots(rows: list[list[str]], base_dir: str, warnings: list[str]) ->
     if "description" not in hmap and "dialogue" not in hmap:
         raise ScriptError("the shot list needs a description (video) or a dialogue (audio) column; "
                           "headers found: " + ", ".join(str(h) for h in rows[0]))
+    # cutdown columns: "in 15", "in_15", "in15s", "15s version" ... -> {column: length}
+    vcols = {}
+    for i, h in enumerate(rows[0]):
+        m = re.match(r"^\s*(?:in[ _-]?)?(\d{1,3})\s*s?(?:ec)?(?:\s*(?:version|cut|cutdown))?\s*$", str(h or "").strip().lower())
+        if m and i not in hmap.values() and str(h).strip().lower() not in ("order", "#"):
+            vcols[i] = int(m.group(1))
+    yes = {"y", "yes", "x", "1", "true", "✓", "✔", "●", "in"}
     shots = []
     for r in rows[1:]:
         cell = lambda f: (str(r[hmap[f]]).strip() if f in hmap and hmap[f] < len(r) and r[hmap[f]] is not None else "")  # noqa: E731
@@ -138,7 +146,8 @@ def _rows_to_shots(rows: list[list[str]], base_dir: str, warnings: list[str]) ->
         shots.append(ScriptShot(order=len(shots) + 1, shot_id=cell("shot_id") or str(len(shots) + 1),
                                 description=desc, dialogue=dia, speaker=speaker,
                                 kind=_kind(cell("kind"), dia, speaker), target_s=_duration(cell("target_s")),
-                                board=board, notes=cell("notes"), super_text=cell("super_text")))
+                                board=board, notes=cell("notes"), super_text=cell("super_text"),
+                                versions=sorted(L for i, L in vcols.items() if i < len(r) and str(r[i] or "").strip().lower() in yes)))
     if "order" in hmap:
         def key(s):
             try:
@@ -323,11 +332,11 @@ def parse_script(path: str, board_dir: Optional[str] = None) -> Script:
 
 
 TEMPLATE_ROWS = [
-    ["order", "shot", "type", "description", "dialogue", "speaker", "duration", "board", "super", "notes"],
-    ["1", "1A", "mos", "Wide: kitchen at sunrise", "", "", "3", "", "", ""],
-    ["2", "2A", "dialogue", "Close: Sarah at the coffee maker", "Fresh coffee in sixty seconds.", "SARAH", "", "", "", ""],
-    ["3", "3A", "mos", "Insert: coffee pouring", "", "", "2", "", "", ""],
-    ["4", "4A", "vo", "Packshot on the counter", "Aurora. Wake up better.", "VO", "3", "", "AURORA - aurora.example", ""],
+    ["order", "shot", "type", "description", "dialogue", "speaker", "duration", "board", "super", "notes", "in 15", "in 6"],
+    ["1", "1A", "mos", "Wide: kitchen at sunrise", "", "", "3", "", "", "", "x", ""],
+    ["2", "2A", "dialogue", "Close: Sarah at the coffee maker", "Fresh coffee in sixty seconds.", "SARAH", "", "", "", "", "x", "x"],
+    ["3", "3A", "mos", "Insert: coffee pouring", "", "", "2", "", "", "", "", ""],
+    ["4", "4A", "vo", "Packshot on the counter", "Aurora. Wake up better.", "VO", "3", "", "AURORA - aurora.example", "", "x", "x"],
 ]
 
 

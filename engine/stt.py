@@ -28,7 +28,18 @@ MODELS = {  # name: (file, bytes, sha256) -- sizes and hashes from the repositor
     "tiny.en": ("ggml-tiny.en.bin", 77704715, "921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f"),
     "base.en": ("ggml-base.en.bin", 147964211, "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002"),
     "small.en": ("ggml-small.en.bin", 487614201, "c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d"),
+    # Multilingual (any language Whisper knows; set the language or let it detect it)
+    "tiny": ("ggml-tiny.bin", 77691713, "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21"),
+    "base": ("ggml-base.bin", 147951465, "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe"),
+    "small": ("ggml-small.bin", 487601967, "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"),
 }
+
+
+def model_for(language: str, size: str = "base") -> str:
+    """English uses the English-only model (more accurate); any other language or "auto" the
+    multilingual one of the same size."""
+    lang = (language or "en").lower()
+    return f"{size}.en" if lang in ("en", "english") else size
 STT_REVISION = 2  # 2: speech regions, non-speech markers dropped
 
 
@@ -150,11 +161,14 @@ def speech_regions(audio: np.ndarray, sr: int = 16000, hop_s: float = 0.02, min_
 class Transcriber:
     """One loaded model; transcribe() calls are serialised (one whisper context)."""
 
-    def __init__(self, name: str, models_dir: str, threads: Optional[int] = None):
+    def __init__(self, name: str, models_dir: str, threads: Optional[int] = None, language: str = "en"):
         if not available():
             raise SttError("speech-to-text is not installed (pywhispercpp); dialogue matching is off")
         from pywhispercpp.model import Model
         self.name = name
+        lang = (language or "").strip().lower()
+        # English-only models always run in English; multilingual ones detect the language on ""
+        self.language = "en" if name.endswith(".en") else ("" if lang in ("", "auto") else lang)
         self.path = ensure_model(name, models_dir)
         self.lock = threading.Lock()
         self.model = Model(self.path, n_threads=threads or max(1, (os.cpu_count() or 2) // 2),
@@ -163,7 +177,7 @@ class Transcriber:
     def words(self, audio) -> list[Word]:
         with self.lock:
             segs = self.model.transcribe(audio, token_timestamps=True, max_len=1, split_on_word=True,
-                                         extract_probability=True)
+                                         extract_probability=True, language=self.language)
         out = []
         for s in segs:
             t = (s.text or "").strip()
@@ -184,12 +198,13 @@ class Transcriber:
 
 
 def transcripts_for(clips: list[tuple[str, str]], name: str, models_dir: str, cache_dir: Optional[str],
-                    progress: Optional[Callable[[int, int, str], None]] = None) -> dict[str, Transcript]:
-    """Transcribe clips [(clip_id, path)], cached per clip id + model."""
+                    progress: Optional[Callable[[int, int, str], None]] = None, language: str = "en") -> dict[str, Transcript]:
+    """Transcribe clips [(clip_id, path)], cached per clip id + model + language."""
     out: dict[str, Transcript] = {}
     todo = []
+    lang_tag = "" if name.endswith(".en") else f"_{(language or 'auto').lower()}"
     for cid, path in clips:
-        cf = os.path.join(cache_dir, "stt", f"{cid}_{name}_r{STT_REVISION}.json") if cache_dir else None
+        cf = os.path.join(cache_dir, "stt", f"{cid}_{name}{lang_tag}_r{STT_REVISION}.json") if cache_dir else None
         if cf and os.path.isfile(cf):
             try:
                 with open(cf, encoding="utf-8") as f:
@@ -199,7 +214,7 @@ def transcripts_for(clips: list[tuple[str, str]], name: str, models_dir: str, ca
                 pass
         todo.append((cid, path, cf))
     if todo:
-        tr = Transcriber(name, models_dir)
+        tr = Transcriber(name, models_dir, language=language)
         for i, (cid, path, cf) in enumerate(todo, start=1):
             t = tr.transcribe_file(cid, path)
             out[cid] = t

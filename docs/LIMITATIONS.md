@@ -1,4 +1,4 @@
-# Limitations (v0.4.0)
+# Limitations (v0.5.0)
 
 What the product cannot do, or has not proven yet, and the working alternative for each
 (spec rule 4). Nothing here is hidden from the user: each case is reported in the panel.
@@ -59,9 +59,10 @@ What the product cannot do, or has not proven yet, and the working alternative f
 | Face detection needs OpenCV (installed with the helper) | Without it, framing falls back to "unknown" and colour match uses the whole picture | - |
 | Effects travel in the XML: punch-in = Basic Motion scale keyframes, flash = Dip to White, dissolve = Cross Dissolve | Premiere's reading of keyframe times from XML is **not verified** | Effects off, or adjust in Effect Controls |
 | Importing the cut XML through the panel uses the same undocumented `importFiles` route as XML placement | Premiere may not build the sequence automatically | The panel shows the .xml path for File > Import |
-| Slow-motion (2x) takes are used as story footage at native speed | They are not lip-synced in the cut | Conform them in Premiere first (Interpret Footage) |
+| Slow-motion (2x) takes play at 50% speed through the XML (Time Remap) | Premiere's import of speed from XML is documented only in general terms; the direct-placement route cannot set speed and leaves those shots empty | Import the XML; or untick nothing and set the speed by hand |
+| Social versions (9:16, 1:1, 4:5) are framed with Basic Motion in the XML | The position formula follows four real exports but is **not verified** on a real import | Check one shot's Motion > Position; adjust by hand if needed |
 | Preview video renders dissolves as cuts | Preview only | The Premiere sequence has the dissolves |
-| Premiere cannot be given a LUT by a panel (no API; Lumetri's Input LUT is a dropdown index) | Colour match and looks are .cube files the editor loads per take in Lumetri | The preview video has them applied; each clip's comment names its LUT |
+| Premiere cannot be given a LUT by a panel (no API; Lumetri's Input LUT is a dropdown index) | Colour match and looks are .cube files the editor applies per take | "Put the colour LUTs in Lumetri's menus" copies them where Lumetri lists them (restart Premiere once): pick from the menu instead of browsing. The preview video has them applied |
 | Colour match is statistical (skin tone shift with faces, whole-picture mean/contrast without) | Mixed lighting within a take is matched on average; strong creative lighting can be reduced (changes are clamped) | Turn it off for that cut, or grade by hand |
 
 ## Ad first cut limits
@@ -69,12 +70,13 @@ What the product cannot do, or has not proven yet, and the working alternative f
 | Limit | Effect | Alternative |
 |---|---|---|
 | Not yet run on a real shoot (actors, location sound, real scripts) | Matching was checked on synthetic speech and generated footage | The next client test; send the script and a few clip names if something is not found |
-| Speech-to-text is English (`.en` models) and local (whisper.cpp) | Other languages are not matched by dialogue | Take log or file names; a multilingual model can be added |
+| Speech-to-text is local (whisper.cpp); other languages use the multilingual model | Accuracy on location sound in each language is not measured | Take log or file names |
 | No speech-to-text build for Intel Macs | Dialogue matched by take log / file names only (the panel says so) | Apple Silicon Mac or Windows |
 | Picture-only shots without a take log or shot/take in the file name can only be suggested from a storyboard picture | Yellow CHECK marker or red MISSING | Name files `03A_T2` or give a take log |
 | PDF storyboards: text extraction is approximate | Panels need "Shot 3", "Frame 3", "Panel 3" or "3." headings | Export the storyboard as a shot list (CSV/XLSX) |
 | Target length: spoken lines and recorded VO are never cut | If they alone exceed the length, the cut is longer and the panel says by how much | Cut lines by hand |
-| One cut per job (no automatic :30 to :15 cutdowns or 9:16 / 1:1 versions yet) | - | Run again with another length; reframe in Premiere (Auto Reframe) |
+| Automatic cutdowns choose shots by role (end card, lines, opening, then picture) | Without "in 15" / "in 6" columns in the script the choice is a suggestion | Mark the shots per version in the script |
+| Speed ramps (variable speed) are not built | Only constant speed (slow-motion takes at 50%) | Time Remapping in Premiere |
 
 ## Distribution limits
 

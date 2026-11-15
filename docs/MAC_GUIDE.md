@@ -156,6 +156,9 @@ Work on a copy of your project (File > Save As...). Then, in the panel, from top
    variation** makes a different cut with the same rules; **Render preview video** writes an MP4 of
    the cut (and adds it to bin AutoSync) that you can watch or send without Premiere. If the panel
    says Premiere did not import the cut, use File > Import with the .xml path it shows.
+   **Social 9:16 / 1:1 / 4:5** adds framed sequences for social media; **Preview** can render them.
+   Tick **Put the colour LUTs in Lumetri's menus** with Colour match and restart Premiere once: each
+   take's LUT then appears in Lumetri Color > Basic Correction > Input LUT.
    Colour match writes one LUT file per take (the panel shows the folder). Premiere does not let a
    panel load a LUT, so in Lumetri Color > Basic Correction > Input LUT > Browse, choose the take's
    LUT (each clip's comment names it); the preview video already has the colour applied.
@@ -254,7 +257,7 @@ If the panel changed, install the new `.ccx` again (step 6).
 | `zsh: command not found: brew` in a new window | Close Terminal and open it again (setup added Homebrew to `~/.zprofile`). The AutoSync scripts find Homebrew either way |
 | `permission denied: ./scripts/...` | `chmod +x scripts/*.sh` |
 | `port 47653 is already in use` | A helper is already running in another Terminal window; use it or close it |
-| The panel does not scroll, **Use selected project items** ignores a selected bin, or there is no **First cut** / **Ad first cut** section | An older panel. Update (see "Updating to a newer version") and install the new `.ccx`; the panel's About line shows **Panel 0.4.0** or later |
+| The panel does not scroll, **Use selected project items** ignores a selected bin, or there is no **First cut** / **Ad first cut** section | An older panel. Update (see "Updating to a newer version") and install the new `.ccx`; the panel's About line shows **Panel 0.5.0** or later |
 | `helper_smoke.py` says the helper is not reachable | Start it first (step 4) and wait for "Application startup complete." |
 | The panel shows red, but the helper runs with `https://` | Premiere may not accept the local certificate. Use Plan B, and send us a screenshot plus the panel's error from UXP Developer Tool > Debug |
 | A take is UNSYNCED / DECODE_ERROR | FFmpeg cannot read its audio (some RAW formats). Place it by hand in Review (type a timecode, click **Set**) |

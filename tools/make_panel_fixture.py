@@ -45,6 +45,11 @@ def write_cut_fixture() -> str:
     assert validate_plan(plan, res, mm) == []
     out = os.path.join(OUT, "cut.xml")
     write_edit_xml(res, plan, out, "AutoSync Cut - Song Master - fixture")
+    import json
+
+    from export.uxp_payload import cut_payload
+    with open(os.path.join(OUT, "cut_uxp.json"), "w", encoding="utf-8", newline="\n") as f:
+        json.dump(cut_payload(res, plan, "AutoSync Cut - Song Master - fixture"), f, indent=1)
     return out
 
 

@@ -15,6 +15,7 @@ from xml.sax.saxutils import escape
 
 from engine.ad import AdPlan, Clip
 from export.fcp7_xml import _frames, _rate, pathurl
+from export.xml_motion import motion_filter, reframe_motion
 
 
 def _file(fid: str, path: str, frames: int, rate: str, video: bool, audio: bool) -> str:
@@ -33,7 +34,10 @@ def _colour(a) -> str:
 
 def build_ad_xml(plan: AdPlan, clips: list[Clip], sequence_name: str, width: int, height: int,
                  music_s: Optional[float] = None, vo_s: Optional[float] = None,
-                 luts: Optional[dict[str, str]] = None) -> str:
+                 luts: Optional[dict[str, str]] = None, frame: Optional[dict] = None) -> str:
+    """`frame`: a social version {width, height, centres: [(cx, cy) per shot], sources: {clip_id: (w, h)}}."""
+    if frame is not None:
+        width, height = frame["width"], frame["height"]
     fps = Fraction(plan.fps_num, plan.fps_den)
     rate = _rate(fps)
     by_id = {c.clip_id: c for c in clips}
@@ -63,12 +67,18 @@ def build_ad_xml(plan: AdPlan, clips: list[Clip], sequence_name: str, width: int
             link = (f"<link><linkclipref>v-{i}</linkclipref><mediatype>video</mediatype><trackindex>1</trackindex>"
                     f"<clipindex>{v_index}</clipindex></link><link><linkclipref>a-{i}</linkclipref><mediatype>audio</mediatype>"
                     f"<trackindex>1</trackindex><clipindex>{a_index}</clipindex><groupindex>1</groupindex></link>")
+        motion = ""
+        if frame is not None and (frame.get("sources") or {}).get(c.clip_id):
+            sw, sh = frame["sources"][c.clip_id]
+            cx, cy = frame["centres"][i] if frame.get("centres") else (0.5, 0.5)
+            sc, hz, vt = reframe_motion(sw, sh, width, height, cx, cy)
+            motion = motion_filter(scale_pct=sc, center=(hz, vt))
         comment = f"{a.shot_id}: {a.method} ({a.confidence}) {a.reason}"
         lut = f"<mastercomment2>Input LUT: {escape(luts[c.clip_id])}</mastercomment2>" if c.clip_id in luts else ""
         v_items.append(
             f'<clipitem id="v-{i}"><name>{escape(c.name)}</name><enabled>TRUE</enabled><duration>{total}</duration>{rate}'
             f"<start>{a.start}</start><end>{a.end}</end><in>{a.src_in}</in><out>{a.src_out}</out>"
-            f"{fileref(fid, c.path, total, c.has_video, c.has_audio)}{link}"
+            f"{fileref(fid, c.path, total, c.has_video, c.has_audio)}{motion}{link}"
             f"<comments><mastercomment1>{escape(comment)}</mastercomment1>{lut}</comments></clipitem>")
         if sound:
             a_items.append(
@@ -128,8 +138,8 @@ def build_ad_xml(plan: AdPlan, clips: list[Clip], sequence_name: str, width: int
 
 def write_ad_xml(plan: AdPlan, clips: list[Clip], out_path: str, sequence_name: str, width: int, height: int,
                  music_s: Optional[float] = None, vo_s: Optional[float] = None,
-                 luts: Optional[dict[str, str]] = None) -> dict:
-    text = build_ad_xml(plan, clips, sequence_name, width, height, music_s, vo_s, luts)
+                 luts: Optional[dict[str, str]] = None, frame: Optional[dict] = None) -> dict:
+    text = build_ad_xml(plan, clips, sequence_name, width, height, music_s, vo_s, luts, frame)
     tmp = out_path + ".tmp"
     with open(tmp, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)

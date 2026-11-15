@@ -28,6 +28,8 @@ class AdCut:
     music_s: Optional[float] = None
     vo_s: Optional[float] = None
     transcribed: int = 0
+    versions: list[dict] = field(default_factory=list)   # cutdowns: {length, plan, dropped, how}
+    shots_report: Optional[object] = None                # engine.shots.ShotsReport when analysed
 
 
 def probe_clips(paths: list[str], progress: Progress = None) -> tuple[list[Clip], list[str]]:
@@ -46,9 +48,9 @@ def probe_clips(paths: list[str], progress: Progress = None) -> tuple[list[Clip]
 
 def run_ad_cut(script_path: str, clip_paths: list[str], fps: Fraction, out_dir: str, *,
                takelog_path: Optional[str] = None, music_path: Optional[str] = None, vo_path: Optional[str] = None,
-               settings: Optional[AdSettings] = None, transcribe: bool = True, model: str = "base.en",
+               settings: Optional[AdSettings] = None, transcribe: bool = True, model: Optional[str] = None,
                models_dir: Optional[str] = None, cache_dir: Optional[str] = None, analyse_shots: bool = False,
-               progress: Progress = None) -> AdCut:
+               progress: Progress = None, cutdowns: Optional[list[float]] = None) -> AdCut:
     os.makedirs(out_dir, exist_ok=True)
     script = parse_script(script_path, board_dir=os.path.join(out_dir, "boards"))
     clips, warnings = probe_clips(clip_paths, progress)
@@ -59,6 +61,10 @@ def run_ad_cut(script_path: str, clip_paths: list[str], fps: Fraction, out_dir: 
 
     transcripts, vo = {}, None
     n_tr = 0
+    st_lang = (settings or AdSettings()).language
+    if model is None:
+        from .stt import model_for
+        model = model_for(st_lang)
     needs_speech = any(s.kind == "dialogue" for s in script.shots) or (vo_path and any(s.kind == "vo" for s in script.shots))
     if transcribe and needs_speech:
         from .stt import SttError, Transcriber, available, transcripts_for
@@ -72,13 +78,14 @@ def run_ad_cut(script_path: str, clip_paths: list[str], fps: Fraction, out_dir: 
                 with_audio = [(c.clip_id, c.path) for c in clips if c.has_audio]
                 if any(s.kind == "dialogue" for s in script.shots) and with_audio:
                     transcripts = transcripts_for(with_audio, model, mdir, cache_dir,
-                                                  progress=(lambda d, n, p: progress("transcribing dialogue", d, n, os.path.basename(p))) if progress else None)
+                                                  progress=(lambda d, n, p: progress("transcribing dialogue", d, n, os.path.basename(p))) if progress else None,
+                                                  language=st_lang)
                     n_tr = sum(1 for t in transcripts.values() if t.error is None)
                     for t in transcripts.values():
                         if t.error:
                             warnings.append(f"transcription: {t.error}")
                 if vo_path:
-                    vo = Transcriber(model, mdir).transcribe_file("vo", vo_path)
+                    vo = Transcriber(model, mdir, language=st_lang).transcribe_file("vo", vo_path)
                     if vo.error:
                         warnings.append(f"VO recording: {vo.error}")
                         vo = None
@@ -86,6 +93,7 @@ def run_ad_cut(script_path: str, clip_paths: list[str], fps: Fraction, out_dir: 
                 warnings.append(f"dialogue matching off: {e}")
 
     quality = None
+    rep = None
     if analyse_shots:
         from .shots import analyse_takes, shot_info_from_report
         rep = analyse_takes([(c.clip_id, c.path) for c in clips], cache_dir=cache_dir,
@@ -109,11 +117,26 @@ def run_ad_cut(script_path: str, clip_paths: list[str], fps: Fraction, out_dir: 
             vo_path = None
     if progress:
         progress("matching takes to the script", 0, 1, "")
-    plan = build_ad_plan(script, clips, fps, settings or AdSettings(), transcripts=transcripts, takelog=log, vo=vo,
-                         vo_path=vo_path, music_path=music_path, beats=beats, quality=quality)
+    st = settings or AdSettings()
+    common = dict(transcripts=transcripts, takelog=log, vo=vo, vo_path=vo_path, music_path=music_path, beats=beats, quality=quality)
+    plan = build_ad_plan(script, clips, fps, st, **common)
     plan.warnings = warnings + plan.warnings
     problems = validate_ad_plan(plan, clips)
     if problems:
         raise AdCutError("the ad cut breaks a rule: " + "; ".join(problems[:5]))
+    versions = []
+    for L in sorted({float(x) for x in (cutdowns or []) if x and (not st.target_s or float(x) < st.target_s)}, reverse=True):
+        from .ad import cutdown_script
+        if progress:
+            progress(f"building the {L:g} s version", 0, 1, "")
+        sub, dropped, how = cutdown_script(script, L, plan, fps, st)
+        if not sub.shots:
+            warnings.append(f"{L:g} s version: no shot fits")
+            continue
+        p = build_ad_plan(sub, clips, fps, st.model_copy(update={"target_s": L}), **common)
+        bad = validate_ad_plan(p, clips)
+        if bad:
+            raise AdCutError(f"the {L:g} s version breaks a rule: " + "; ".join(bad[:5]))
+        versions.append({"length": L, "plan": p, "dropped": dropped, "how": how})
     return AdCut(script=script, clips=clips, plan=plan, warnings=plan.warnings, music_s=music_s, vo_s=vo_s,
-                 transcribed=n_tr)
+                 transcribed=n_tr, versions=versions, shots_report=rep)

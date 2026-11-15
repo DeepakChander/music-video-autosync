@@ -50,12 +50,23 @@ def number_words(n: int) -> str:
     return str(n)
 
 
-def norm_words(text: str) -> list[str]:
-    """Lowercase words; digits spelled out (the transcript says "60", the script "sixty")."""
-    t = text.lower().replace("%", " percent").replace("&", " and ").replace("’", "'")
-    t = re.sub(r"(\d),(\d{3})", r"\1\2", t)
-    t = re.sub(r"\d+", lambda m: " " + number_words(int(m.group())) + " ", t)
-    t = re.sub(r"[^a-z' ]+", " ", t)
+def norm_words(text: str, language: str = "en") -> list[str]:
+    """Lowercase words for matching. English: digits spelled out (the transcript says "60", the
+    script "sixty"). Every language: accents folded (café = cafe), punctuation dropped, letters of
+    any script kept (Devanagari, Arabic, Cyrillic, CJK ...); other languages keep digits as digits."""
+    import unicodedata
+    t = text.lower().replace("’", "'")
+    english = (language or "en").lower() in ("en", "english")
+    if english:
+        t = t.replace("%", " percent").replace("&", " and ")
+        t = re.sub(r"(\d),(\d{3})", r"\1\2", t)
+        t = re.sub(r"\d+", lambda m: " " + number_words(int(m.group())) + " ", t)
+    t = unicodedata.normalize("NFKD", t)
+    # drop Latin accent marks only (combining marks after a-z); keep marks that are part of other scripts
+    t = re.sub(r"(?<=[a-z])[\u0300-\u036f]+", "", t)
+    t = unicodedata.normalize("NFC", t)
+    # keep letters, marks (Devanagari/Arabic vowel signs are marks, not letters) and digits
+    t = "".join(ch if ch == "'" or unicodedata.category(ch)[0] in "LMN" else " " for ch in t)
     return [w.strip("'") for w in t.split() if w.strip("'")]
 
 
@@ -152,16 +163,17 @@ class LineMatch:
     words: int
 
 
-def align_line(line: str, transcript: Transcript, min_score: float = 70.0, max_matches: int = 3) -> list[LineMatch]:
+def align_line(line: str, transcript: Transcript, min_score: float = 70.0, max_matches: int = 3,
+               language: str = "en") -> list[LineMatch]:
     """Where a scripted line is spoken in a clip (several times for repeated takes in one clip)."""
     from rapidfuzz import fuzz
-    target = norm_words(line)
+    target = norm_words(line, language)
     if not target or not transcript.words:
         return []
     # normalised transcript words keep a pointer to the source word (for times)
     toks: list[tuple[str, Word]] = []
     for w in transcript.words:
-        for t in norm_words(w.text):
+        for t in norm_words(w.text, language):
             toks.append((t, w))
     if not toks:
         return []
@@ -255,7 +267,7 @@ def picture_similarity(a: np.ndarray, b: np.ndarray) -> float:
     corr = float(np.clip(np.mean(ha * hb), -1, 1))
 
     def dhash(x):
-        y = x @ np.array([0.2126, 0.7152, 0.0722])
+        y = 0.2126 * x[..., 0] + 0.7152 * x[..., 1] + 0.0722 * x[..., 2]
         ys = np.linspace(0, y.shape[0], 9).astype(int)
         xs = np.linspace(0, y.shape[1], 10).astype(int)
         g = np.array([[y[ys[r]:ys[r + 1], xs[c]:xs[c + 1]].mean() for c in range(9)] for r in range(8)])
@@ -279,6 +291,7 @@ class AdSettings(BaseModel):
     vo_words_per_s: float = 2.6      # design: VO read speed when no VO recording is given
     min_line_score: float = 70.0     # design: RapidFuzz ratio for "this is the line"
     board_threshold: float = 0.62    # design: picture similarity for a storyboard suggestion
+    language: str = "en"             # dialogue language: "en", "auto" or a Whisper language code (hi, es, fr ...)
     use_board_suggestions: bool = True
     snap_to_beats: bool = True
 
@@ -409,7 +422,7 @@ def build_ad_plan(script: Script, clips: list[Clip], fps: Fraction, settings: Op
             t = transcripts.get(c.clip_id)
             if t is None or not t.words:
                 continue
-            ms = align_line(s.dialogue, t, st.min_line_score)
+            ms = align_line(s.dialogue, t, st.min_line_score, language=st.language)
             if not ms:
                 continue
             best = max(ms, key=lambda m: (m.score, m.start))  # the last good delivery wins ties
@@ -479,14 +492,14 @@ def build_ad_plan(script: Script, clips: list[Clip], fps: Fraction, settings: Op
         if a.kind == "dialogue" and a.line_score is not None:
             return a.src_out_s - a.src_in_s, True
         if a.kind == "vo" and vo is not None:
-            ms = align_line(s.dialogue, vo, st.min_line_score)
+            ms = align_line(s.dialogue, vo, st.min_line_score, language=st.language)
             if ms:
                 m = ms[0]
                 a.vo_in_s, a.vo_out_s = max(0.0, m.start - 0.1), m.end + 0.25
                 return max(s.target_s or 0.0, a.vo_out_s - a.vo_in_s + 0.3), True
             warnings.append(f"shot {s.shot_id}: VO line not found in the VO recording")
         if a.kind == "vo" and s.dialogue:
-            est = len(norm_words(s.dialogue)) / st.vo_words_per_s + 0.5
+            est = len(norm_words(s.dialogue, st.language)) / st.vo_words_per_s + 0.5
             return max(s.target_s or 0.0, est), False
         return s.target_s or st.mos_default_s, False
 
@@ -502,9 +515,25 @@ def build_ad_plan(script: Script, clips: list[Clip], fps: Fraction, settings: Op
         flex_total = sum(durs[i] for i in flex)
         room = st.target_s - fixed_total
         if flex and flex_total > 0:
-            scale = room / flex_total
-            for i in flex:
-                durs[i] = max(st.min_shot_s, durs[i] * scale)
+            # Scale the adjustable shots to the room; shots that hit the minimum stay there and the
+            # rest are rescaled, until the total fits (or every adjustable shot is at the minimum).
+            free = list(flex)
+            base = {i: durs[i] for i in flex}
+            for _ in range(len(flex) + 1):
+                pinned = [i for i in flex if i not in free]
+                left = room - st.min_shot_s * len(pinned)
+                tot = sum(base[i] for i in free)
+                if not free or tot <= 0:
+                    break
+                scale = left / tot
+                newly = [i for i in free if base[i] * scale < st.min_shot_s]
+                for i in free:
+                    durs[i] = max(st.min_shot_s, base[i] * scale)
+                for i in pinned:
+                    durs[i] = st.min_shot_s
+                if not newly:
+                    break
+                free = [i for i in free if i not in newly]
         if abs(sum(durs) - st.target_s) > 0.05:
             warnings.append(f"script runs {sum(durs):.2f} s against a target of {st.target_s:g} s "
                             f"(dialogue/VO lines are never cut; {len(flex)} adjustable shots at {st.min_shot_s:g} s minimum)")
@@ -606,3 +635,57 @@ def validate_ad_plan(plan: AdPlan, clips: list[Clip]) -> list[str]:
     if order != sorted(order):
         problems.append("shots are not in script order")
     return problems
+
+
+
+# --------------------------------------------------------------------------------------
+# Cutdowns (30 -> 15 -> 6)
+# --------------------------------------------------------------------------------------
+
+_HERO = re.compile(r"\b(packshot|pack shot|product|logo|end ?card|hero|title|cta|call to action)\b", re.I)
+
+
+def cutdown_script(script: Script, length: float, full: AdPlan, fps: Fraction, settings: Optional[AdSettings] = None) -> tuple[Script, list[str], str]:
+    """The shots of a shorter version. When the script marks shots for this length ("in 15"
+    column), exactly those. Otherwise: the end card / packshot, the spoken lines, the opening
+    shot, then picture-only shots in script order while they fit at their minimum length.
+    Returns (script, dropped shot ids, how they were chosen)."""
+    st = settings or AdSettings()
+    L = int(round(length))
+    marked = [s for s in script.shots if s.versions]
+    if marked:
+        keep = [s for s in script.shots if L in s.versions]
+        if keep:
+            return (script.model_copy(update={"shots": [s.model_copy(update={"order": i + 1}) for i, s in enumerate(keep)]}),
+                    [s.shot_id for s in script.shots if s not in keep], f"script columns (in {L})")
+    planned = {a.shot_id: a for a in full.shots}
+    secs = {s.shot_id: (planned[s.shot_id].end - planned[s.shot_id].start) / float(fps) if s.shot_id in planned else st.mos_default_s
+            for s in script.shots}
+    fixed = {s.shot_id for s in script.shots if s.kind in ("dialogue", "vo") and s.dialogue}
+
+    def need(s):  # time a shot needs in the cutdown: lines keep their length, picture can shrink
+        return secs[s.shot_id] if s.shot_id in fixed else st.min_shot_s
+
+    last = script.shots[-1]
+    prio = []
+    for i, s in enumerate(script.shots):
+        p = 0
+        if s is last and (s.kind in ("graphic", "vo") or _HERO.search(s.description + " " + s.notes)):
+            p = 100
+        elif _HERO.search(s.description + " " + s.notes) and s.kind != "dialogue":
+            p = 85
+        elif s.shot_id in fixed:
+            p = 80 - i * 0.01
+        elif i == 0:
+            p = 70
+        else:
+            p = 50 - i * 0.01
+        prio.append((p, i, s))
+    chosen, used = set(), 0.0
+    for p, i, s in sorted(prio, key=lambda x: (-x[0], x[1])):
+        if used + need(s) <= length + 1e-6:
+            chosen.add(i)
+            used += need(s)
+    keep = [s for i, s in enumerate(script.shots) if i in chosen]
+    return (script.model_copy(update={"shots": [s.model_copy(update={"order": k + 1}) for k, s in enumerate(keep)]}),
+            [s.shot_id for i, s in enumerate(script.shots) if i not in chosen], "automatic (end card, lines, opening, then picture)")

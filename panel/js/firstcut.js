@@ -9,8 +9,25 @@
  * (File > Import the XML). Nothing is reported as imported unless the sequence is found.
  */
 
-function createFirstCut(ppro, pr, api, sleepFn) {
+function createFirstCut(ppro, pr, api, sleepFn, cutPlacer) {
   const sleep = sleepFn || ((ms) => new Promise((r) => setTimeout(r, ms)));
+
+  // XML import first; when Premiere builds no sequence from it, place the cut directly (UXP).
+  async function bring(project, out) {
+    const imp = await importXml(project, out.xml_path, out.sequence_name);
+    if (imp.seq) {
+      await pr.openSequence(project, imp.seq, 0n);
+      return { imported: true, method: "xml", sequenceGuid: String(imp.seq.guid), notes: imp.notes, placement: null };
+    }
+    if (cutPlacer && out.uxp) {
+      const rep = await cutPlacer.place(out.uxp);
+      return { imported: rep.ok, method: "uxp", sequenceGuid: rep.sequenceGuid || null,
+        notes: imp.notes.concat(["Premiere did not build a sequence from the XML; the cut was placed directly instead."], rep.notes || []),
+        placement: { placed: rep.placed, planned: rep.planned, mismatches: rep.mismatches, errors: rep.errors, markers: rep.markers || 0,
+          transitions: rep.transitions || null } };
+    }
+    return { imported: false, method: null, sequenceGuid: null, notes: imp.notes, placement: null };
+  }
 
   async function autosyncBin(project) {
     const root = await project.getRootItem();
@@ -36,14 +53,17 @@ function createFirstCut(ppro, pr, api, sleepFn) {
     if (!jobId) throw new Error("Analyse the clips first.");
     const out = await api.cut(jobId, Object.assign({}, opts, { preview: false }));
     const project = await pr.activeProject();
-    const imp = await importXml(project, out.xml_path, out.sequence_name);
-    if (imp.seq) await pr.openSequence(project, imp.seq, 0n);
-    return Object.assign({}, out, {
-      imported: Boolean(imp.seq),
-      sequenceGuid: imp.seq ? String(imp.seq.guid) : null,
-      importReturned: imp.returned,
-      notes: imp.notes,
-    });
+    const b = await bring(project, out);
+    const versions = [];
+    for (const v of out.versions || []) {  // social versions: XML route only (reframing is a Motion keyframe in the XML)
+      const imp = await importXml(project, v.xml_path, v.sequence_name);
+      versions.push(Object.assign({}, v, { imported: Boolean(imp.seq) }));
+    }
+    if (versions.length && b.sequenceGuid) {
+      const seq = await pr.findSequence(project, b.sequenceGuid);
+      if (seq) await pr.openSequence(project, seq, 0n);
+    }
+    return Object.assign({}, out, b, { versions });
   }
 
   async function preview(jobId, opts, onProgress) {
@@ -93,13 +113,26 @@ function createFirstCut(ppro, pr, api, sleepFn) {
     if (!st || st.state !== "done") throw new Error(`The ad cut could not be built: ${st && st.error ? st.error : "no status from the helper"}`);
     const r = st.result;
     const project = await pr.activeProject();
-    const imp = await importXml(project, r.xml_path, r.sequence_name);
-    if (imp.seq) await pr.openSequence(project, imp.seq, 0n);
-    return Object.assign({ jobId: st.id }, r, { imported: Boolean(imp.seq), sequenceGuid: imp.seq ? String(imp.seq.guid) : null, notes: imp.notes });
+    const b = await bring(project, r);
+    const versions = [];
+    for (const v of r.versions || []) {  // cutdowns: each its own sequence
+      const vb = await bring(project, v);
+      versions.push(Object.assign({}, v, vb, { uxp: undefined }));
+    }
+    const aspects = [];
+    for (const v of r.aspect_versions || []) {  // social versions: XML route (framing is Basic Motion in the XML)
+      const imp = await importXml(project, v.xml_path, v.sequence_name);
+      aspects.push(Object.assign({}, v, { imported: Boolean(imp.seq) }));
+    }
+    if (b.sequenceGuid) {  // leave the main cut open
+      const seq = await pr.findSequence(project, b.sequenceGuid);
+      if (seq) await pr.openSequence(project, seq, 0n);
+    }
+    return Object.assign({ jobId: st.id }, r, b, { versions, aspect_versions: aspects });
   }
 
-  async function adPreview(jobId, width, onProgress) {
-    let st = await api.adPreviewStart(jobId, width);
+  async function adPreview(jobId, width, onProgress, aspect) {
+    let st = await api.adPreviewStart(jobId, width, aspect);
     while (st && st.state === "running") {
       if (onProgress) onProgress(st);
       await sleep(1000);

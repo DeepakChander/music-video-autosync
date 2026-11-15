@@ -81,6 +81,14 @@ After **Analyse All Clips** has finished, section **6. First cut** builds an edi
   (the clip comment names it), or the look LUT in Creative > Look on an adjustment layer.
   The preview video has the colour applied.
 
+- **Slow motion**: takes shot against double-speed playback (the sync engine reports them as 2x)
+  are cut in at 50% speed, in sync with the song (lip sync within half a source frame).
+- **Social** 9:16 / 1:1 / 4:5: extra sequences of the same cut, each shot cropped around the
+  singer's face (from Analyse shots; picture centre without it). **Preview** can render any of them.
+- If Premiere does not build the sequence from the cut's XML, the panel places the cut itself
+  through Premiere's API (shots, song, markers, transitions) and reads every shot back.
+  Slow-motion shots need the XML route (the API cannot set clip speed).
+
 The cut is a starting point: swap shots, trim and grade as usual. The synced draft (step 5) keeps
 every take on its own track for alternates.
 

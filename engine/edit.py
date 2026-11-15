@@ -52,6 +52,7 @@ class EditSettings(BaseModel):
     seed: int = 0
     effects: bool = True                              # style effects (punch-ins, flashes, dissolves)
     place_low: bool = False
+    slowmo: bool = True                               # slow-motion takes (2x playback) play at 1/rate speed, in sync
     hero_clip_id: Optional[str] = None
     story_clip_ids: list[str] = Field(default_factory=list)    # synced clips the editor marks as story
     exclude_clip_ids: list[str] = Field(default_factory=list)
@@ -74,6 +75,7 @@ class Shot(BaseModel):
     clip_id: Optional[str] = None
     src_in: int = 0                # clip in-point in sequence frames (xmeml convention)
     src_out: int = 0               # exclusive
+    speed: float = 1.0             # playback speed (0.5 = a 2x-playback take conformed to the song)
     section: int = 0
     reason: str = ""
     alternates: list[str] = Field(default_factory=list)
@@ -118,13 +120,18 @@ class Take:
     in_frame: int         # take in-point (sequence frames)
     total: int            # take length (sequence frames)
     story: bool = False
+    rate: float = 1.0     # playback rate the take was shot against (2 = slow motion at 50%)
 
     @property
-    def end(self) -> int:  # first sequence frame after the take's last frame
-        return self.start + (self.total - self.in_frame)
+    def end(self) -> int:  # first sequence frame after the take's last frame (at 1/rate speed)
+        return self.start + int(math.floor((self.total - self.in_frame) * self.rate))
 
     def covers(self, a: int, b: int) -> bool:
         return self.start <= a and b <= self.end
+
+    def src_at(self, f: int) -> int:
+        """Source frame shown at sequence frame f: lip sync, exact for 1x, nearest frame at 1/rate."""
+        return self.in_frame + int(math.floor((f - self.start) / self.rate + 0.5))
 
 
 def takes_from_result(result: SyncResult, settings: EditSettings) -> tuple[list[Take], list[Take]]:
@@ -144,7 +151,8 @@ def takes_from_result(result: SyncResult, settings: EditSettings) -> tuple[list[
         synced = c.override is not None or c.status in (Status.HIGH, Status.MEDIUM) or (
             settings.place_low and c.status == Status.LOW)
         one_x = c.override is not None or abs((c.rate or 1.0) - 1.0) < 1e-9
-        if synced and one_x and c.clip_id not in marked:
+        rate = 1.0 if one_x else float(c.rate or 1.0)
+        if synced and (one_x or settings.slowmo) and c.clip_id not in marked:
             if c.override is not None:
                 ticks, in_s = int(c.override.song_position_ticks), 0.0
             else:
@@ -156,7 +164,7 @@ def takes_from_result(result: SyncResult, settings: EditSettings) -> tuple[list[
             if start.denominator != 1:
                 continue  # not on a frame: the sync result guarantees this never happens
             in_f = min(total - 1, max(0, seconds_to_frames(in_s, fps)))
-            perf.append(Take(c, int(start), in_f, total))
+            perf.append(Take(c, int(start), in_f, total, rate=rate))
         elif c.status == Status.UNSYNCED or not one_x or c.clip_id in marked:
             story.append(Take(c, 0, 0, total, story=True))
     perf.sort(key=lambda t: t.clip.name.lower())
@@ -450,19 +458,20 @@ def build_plan(result: SyncResult, music: MusicMap, settings: Optional[EditSetti
         scored.sort(key=lambda x: (-x[0], x[1]))
         best = scored[0][2]
         info = shot_info.get(best.clip.clip_id, ShotInfo())
-        src_in = best.in_frame + (a - best.start)
-        _q, best_size, _f = info.window(src_in / float(fps), (src_in + (b - a)) / float(fps))
+        src_in = best.src_at(a)
+        src_out = best.src_at(b)
+        _q, best_size, _f = info.window(src_in / float(fps), src_out / float(fps))
         last = shots[-1] if shots else None
         if (last is not None and last.kind == "performance" and last.clip_id == best.clip.clip_id
                 and last.end == a and last.src_out == src_in):
             # Only the previous take covers this beat: a cut to the same synced take would be
             # invisible, so the shot simply continues.
-            last.end, last.src_out = b, src_in + (b - a)
+            last.end, last.src_out = b, src_out
             st.used[best.clip.clip_id] = st.used.get(best.clip.clip_id, 0) + (b - a)
             st.assigned += b - a
             continue
         shots.append(Shot(index=len(shots), start=a, end=b, kind="performance", clip_id=best.clip.clip_id,
-                          src_in=src_in, src_out=src_in + (b - a), section=si,
+                          src_in=src_in, src_out=src_out, section=si, speed=round(1.0 / best.rate, 6),
                           reason=f"{kind}{' section start' if is_start else ''}{' coverage cut' if is_rest else ''}; score {scored[0][0]:.2f}",
                           alternates=[x[1] for x in scored[1:4]]))
         cid = best.clip.clip_id
@@ -580,8 +589,10 @@ def validate_plan(plan: EditPlan, result: SyncResult, music: MusicMap) -> list[s
             if t is None:
                 problems.append(f"shot {i}: {s.clip_id} is not a synced take")
                 continue
-            if s.src_in != t.in_frame + (s.start - t.start):
-                problems.append(f"shot {i}: lip sync broken (src_in {s.src_in} != {t.in_frame + (s.start - t.start)})")
+            if s.src_in != t.src_at(s.start):
+                problems.append(f"shot {i}: lip sync broken (src_in {s.src_in} != {t.src_at(s.start)})")
+            if abs(s.speed - 1.0 / t.rate) > 1e-6:
+                problems.append(f"shot {i}: speed {s.speed} does not conform the {t.rate:g}x take")
             if not t.covers(s.start, s.end):
                 problems.append(f"shot {i}: take {s.clip_id} does not cover {s.start}-{s.end}")
         if s.kind == "story":

@@ -114,6 +114,9 @@
       <label><input type="checkbox" id="cutColour"> Colour match (every take to one hero take)</label>
     </div>
     <div class="row">
+      <label><input type="checkbox" id="cutInstallLuts"> Put the colour LUTs in Lumetri's menus (restart Premiere once)</label>
+    </div>
+    <div class="row">
       <span class="label">Look</span>
       <select id="cutLook">
         <option value="none">None</option>
@@ -132,6 +135,16 @@
         <option value="1.4">Faster</option>
       </select>
       <label><input type="checkbox" id="cutEffects" checked> Effects</label>
+    </div>
+    <div class="row"><span class="label">Social</span><label><input type="checkbox" id="cutV916"> 9:16</label><label><input type="checkbox" id="cutV11"> 1:1</label><label><input type="checkbox" id="cutV45"> 4:5</label><span class="muted small grow">extra sequences, framed on the singer</span></div>
+    <div class="row">
+      <span class="label">Preview</span>
+      <select id="cutPreviewAspect">
+        <option value="">Sequence size</option>
+        <option value="9:16">9:16 vertical</option>
+        <option value="1:1">1:1 square</option>
+        <option value="4:5">4:5</option>
+      </select>
     </div>
     <div class="row wrap"><button id="makeCut" class="primary" disabled>MAKE FIRST CUT</button><button id="cutVariation" disabled>Another variation</button><button id="cutPreview" disabled>Render preview video</button></div>
     <div id="cutOut" class="summary hidden"></div>
@@ -154,7 +167,43 @@
         <option value="60">60 s</option>
       </select>
     </div>
+    <div class="row"><span class="label">Also make</span><label><input type="checkbox" id="adCut15"> 15 s version</label><label><input type="checkbox" id="adCut6"> 6 s version</label></div>
+    <div class="row"><span class="label">Social</span><label><input type="checkbox" id="adV916"> 9:16</label><label><input type="checkbox" id="adV11"> 1:1</label><label><input type="checkbox" id="adV45"> 4:5</label><span class="muted small grow">framed on faces (analyses the shots)</span></div>
+    <div class="row">
+      <span class="label">Preview</span>
+      <select id="adPreviewAspect">
+        <option value="">Sequence size</option>
+        <option value="9:16">9:16 vertical</option>
+        <option value="1:1">1:1 square</option>
+        <option value="4:5">4:5</option>
+      </select>
+    </div>
     <div class="row"><label><input type="checkbox" id="adTranscribe" checked> Match dialogue by speech (downloads a 148 MB speech model once)</label></div>
+    <div class="row">
+      <span class="label">Language</span>
+      <select id="adLanguage">
+        <option value="en">English</option>
+        <option value="auto">Detect automatically</option>
+        <option value="hi">Hindi</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+        <option value="pt">Portuguese</option>
+        <option value="it">Italian</option>
+        <option value="ar">Arabic</option>
+        <option value="ur">Urdu</option>
+        <option value="bn">Bengali</option>
+        <option value="ta">Tamil</option>
+        <option value="te">Telugu</option>
+        <option value="mr">Marathi</option>
+        <option value="ja">Japanese</option>
+        <option value="ko">Korean</option>
+        <option value="zh">Chinese</option>
+        <option value="ru">Russian</option>
+        <option value="tr">Turkish</option>
+        <option value="id">Indonesian</option>
+      </select>
+    </div>
     <div class="row wrap"><button id="makeAd" class="primary" disabled>MAKE AD FIRST CUT</button><button id="adPreview" disabled>Render ad preview</button><button id="adTemplate">Save shot-list template…</button></div>
     <div id="adOut" class="summary hidden"></div>
   </div>

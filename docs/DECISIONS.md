@@ -368,3 +368,38 @@ fails the build if any other file requires a relative module.
   5/6 shots matched (the 6th correctly missing), fumbled take skipped, circled take used, 15.0 s exact.
   **Not verified:** real shoot material; Premiere importing the ad XML.
 
+## D-028 Speed, framing and LUT folders: how they are written
+
+- **Constant speed (Time Remap):** Apple's xmeml reference describes the effect; three real exports
+  (two from Premiere, one from FCP7) show that a clipitem's <in>/<out> are in *retimed* frames
+  (out - in = end - start), <duration> = media length x 100 / speed, and the source frames are only in
+  the graphdict keyframes (sequence timebase). Writing source frames in <in>/<out> is the symptom of
+  a 2009 report of slowed clips importing with wrong in/out points. Implemented in
+  export/xml_motion.py; slow-motion (2x playback) takes play at 50% in sync (engine/edit.py).
+  The UXP API has no speed setter, so the direct-placement route leaves those shots out and says so.
+- **Framing (Basic Motion):** scale in percent of the clip's native size; center horiz/vert as a
+  fraction of the clip's own unscaled frame (four real Premiere exports agree to the pixel; one
+  third-party tool divides by the sequence size instead). horiz = -(fx - 0.5) * scale, clamped so no
+  black edge shows. Social versions (9:16, 1:1, 4:5) centre each shot on the median face position.
+  **Not verified on a real import:** one test import must show Motion > Position at the computed value.
+- **LUT folders:** Adobe's "Install Custom LUT files" (Premiere Pro 24.0 or later): per user
+  ~/Library/Application Support/Adobe/Common/LUTs (macOS) or %APPDATA%\Adobe\Common\LUTs (Windows);
+  Technical -> Basic Correction > Input LUT, Creative -> Creative > Look. Scanned at launch (restart),
+  no subfolders, about 100 LUTs listed. "Put the colour LUTs in Lumetri's menus" copies the take
+  LUTs there (named AutoSync - song - take; this song's older ones replaced).
+
+## D-029 Direct placement, languages, cutdowns, social versions
+
+- **Direct placement:** when Premiere builds no sequence from the imported XML (UXP import of XML
+  is undocumented), the panel places the cut itself (export/uxp_payload.py, panel/js/placement/cut.js):
+  marks set per shot in their own transaction, overwrite, markers, transitions by runtime match name,
+  music video camera sound muted (A2), ad picture-only shots' sound disabled; every shot read back.
+  The simulated Premiere caught two actions created outside lockedAccess (enforced since 26.3).
+- **Languages:** multilingual Whisper models (tiny/base/small, SHA-256 pinned) for any language other
+  than English or "auto"; matching folds Latin accents and keeps letters and marks of every script.
+- **Cutdowns:** script columns "in 15" / "in 6" decide; otherwise end card, lines, opening, then
+  picture shots while they fit; lengths are fitted by iteratively pinning shots at the 1 s minimum
+  (a single scale overshot by 0.32 s on a 4 s version).
+- **Verified:** unit, helper and panel tests (see test files named in each module). **Not verified:**
+  any of it inside a real Premiere.
+

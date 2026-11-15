@@ -4,6 +4,7 @@ Every error is a JSON body {"error": {"code", "message"}} with a non-200 status.
 from __future__ import annotations
 
 import os
+from fractions import Fraction
 import platform
 import secrets
 import threading
@@ -97,6 +98,9 @@ class CutReq(_Strict):
     colour: bool = False
     look: str = Field("none", pattern="^(none|warm|cool|teal_orange|bw_contrast|film_fade)$")
     hero_clip_id: Optional[str] = None
+    aspects: list[str] = Field(default_factory=list, max_length=3)   # social versions: "9:16", "1:1", "4:5"
+    preview_aspect: Optional[str] = Field(None, pattern="^(9:16|1:1|4:5)$")
+    install_luts: bool = False   # copy the colour LUTs into Lumetri's menus (Premiere restart)
 
 
 class ShotsReq(_Strict):
@@ -112,7 +116,10 @@ class AdReq(_Strict):
     music_path: Optional[str] = None
     vo_path: Optional[str] = None
     transcribe: bool = True
-    model: str = Field("base.en", pattern="^(tiny\\.en|base\\.en|small\\.en)$")
+    model: Optional[str] = Field(None, pattern="^(tiny|base|small)(\\.en)?$")  # None = by language
+    language: str = Field("en", pattern="^(auto|[a-z]{2,3})$")
+    cutdowns: list[float] = Field(default_factory=list, max_length=4)   # shorter versions, e.g. [15, 6]
+    aspects: list[str] = Field(default_factory=list, max_length=3)       # social versions: "9:16", "1:1", "4:5"
     analyse_shots: bool = False
     sequence_name: Optional[str] = None
 
@@ -123,6 +130,7 @@ class PathReq(_Strict):
 
 class PreviewReq(_Strict):
     width: int = Field(1280, ge=320, le=3840)
+    aspect: Optional[str] = Field(None, pattern="^(9:16|1:1|4:5)$")
 
 
 def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> FastAPI:
@@ -372,12 +380,38 @@ def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> Fas
         with open(plan_path, "w", encoding="utf-8") as f:
             f.write(plan.model_dump_json(indent=2))
         info = write_edit_xml(res, plan, os.path.join(folder, safe + ".xml"), name, fc.luts)
+        from export.uxp_payload import cut_payload
         out = {"sequence_name": name, "xml_path": info["path"], "plan_path": plan_path, "stats": plan.stats,
                "warnings": plan.warnings, "markers": [m.model_dump() for m in plan.markers],
                "tempo_bpm": mm.tempo_bpm, "sections": [s.model_dump() for s in mm.sections], "preview": None,
                "used_shot_analysis": shots is not None,
-               "colour": fc.colour.model_dump() if fc.colour else None, "look_lut": fc.look_lut}
+               "colour": fc.colour.model_dump() if fc.colour else None, "look_lut": fc.look_lut,
+               "uxp": cut_payload(res, plan, name)}
         luts = fc.luts
+        out["lut_install"] = None
+        if req.install_luts:
+            if not fc.colour:
+                raise JobError("CUT_INVALID", "Installing LUTs needs Colour match on.", 409)
+            from engine.colour import install_luts
+            try:
+                out["lut_install"] = install_luts(fc.colour, os.path.splitext(os.path.basename(res.master.path))[0])
+            except (OSError, ValueError) as e:
+                out["lut_install"] = {"error": str(e)}
+        from export.reframe import ASPECTS, shot_centres
+        bad = [a for a in req.aspects if a not in ASPECTS]
+        if bad:
+            raise JobError("VALIDATION_ERROR", f"unknown aspect {bad[0]}; use {', '.join(ASPECTS)}", 422)
+        fps_cut = Fraction(plan.fps_num, plan.fps_den)
+        centres = shot_centres(plan, fps_cut, shots) if (req.aspects or req.preview_aspect) else None
+        out["versions"] = []
+        for asp in req.aspects:
+            from export.edit_xml import write_edit_xml as _w
+            w_, h_ = ASPECTS[asp]
+            vname = f"{name} - {asp}"
+            vsafe = "".join(ch if ch.isalnum() or ch in " -_" else "_" for ch in vname)
+            vinfo = _w(res, plan, os.path.join(folder, vsafe + ".xml"), vname, fc.luts,
+                       frame={"width": w_, "height": h_, "centres": centres, "sources": _source_sizes(res)})
+            out["versions"].append({"aspect": asp, "sequence_name": vname, "xml_path": vinfo["path"], "width": w_, "height": h_})
         if req.preview:
             from export.preview import render_preview
             mp4 = os.path.join(folder, safe + ".preview.mp4")
@@ -393,8 +427,10 @@ def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> Fas
                     with preview_lock:
                         previews[key].update(done=d, total=n)
                 try:
-                    render_preview(res, plan, mp4, width=req.preview_width, workers=max(1, (os.cpu_count() or 2) // 2),
-                                   progress=prog, luts=luts)
+                    asp = ASPECTS.get(req.preview_aspect) if req.preview_aspect else None
+                    render_preview(res, plan, mp4, width=min(req.preview_width, 1080) if asp else req.preview_width,
+                                   workers=max(1, (os.cpu_count() or 2) // 2), progress=prog, luts=luts,
+                                   aspect=asp, centres=centres)
                     with preview_lock:
                         previews[key]["state"] = "done"
                 except Exception as e:  # reported to the panel, never swallowed
@@ -403,6 +439,23 @@ def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> Fas
 
             threading.Thread(target=work, daemon=True).start()
             out["preview"] = dict(previews[key])
+        return out
+
+    def _source_sizes(res) -> dict:
+        """clip_id -> (width, height) of the source picture (rotation applied), for reframing."""
+        out = {}
+        for c in res.clips:
+            if not c.source_fps:
+                continue
+            try:
+                mi = probe(c.path)
+                w, h = mi.width, mi.height
+                from engine.shots import _rotation
+                if _rotation(mi) in (90, 270):
+                    w, h = h, w
+                out[c.clip_id] = (w, h)
+            except ProbeError:
+                pass
         return out
 
     @app.get("/jobs/{job_id}/cut/preview")
@@ -445,6 +498,10 @@ def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> Fas
 
     @app.post("/ad/jobs", status_code=201)
     def ad_create(req: AdReq):
+        from export.reframe import ASPECTS
+        bad = [a for a in req.aspects if a not in ASPECTS]
+        if bad:
+            raise JobError("VALIDATION_ERROR", f"unknown aspect {bad[0]}; use {', '.join(ASPECTS)}", 422)
         for label, p in (("script", req.script_path), ("take log", req.takelog_path), ("music bed", req.music_path),
                          ("VO recording", req.vo_path)):
             if p and not os.path.isfile(p):
@@ -457,7 +514,7 @@ def create_app(token: str, cache_dir: str, workers: Optional[int] = None) -> Fas
 
     @app.post("/ad/jobs/{job_id}/preview")
     def ad_preview(job_id: str, req: PreviewReq):
-        return ads.start_preview(job_id, req.width)
+        return ads.start_preview(job_id, req.width, req.aspect)
 
     @app.get("/ad/jobs/{job_id}/preview")
     def ad_preview_status(job_id: str):

@@ -47,10 +47,18 @@ def _enc_args(encoder: str) -> list[str]:
     return ["-c:v", encoder, "-b:v", "8M", "-pix_fmt", "yuv420p"] + _TAGS
 
 
-def _shot_filter(shot: Shot, w: int, h: int, fps: Fraction, lut: Optional[str]) -> str:
+def _shot_filter(shot: Shot, w: int, h: int, fps: Fraction, lut: Optional[str],
+                 centre: Optional[tuple[float, float]] = None, speed: float = 1.0) -> str:
     # HD footage is BT.709; untagged files would otherwise be read as BT.601 (FFmpeg default).
-    f = [f"scale={w}:{h}:force_original_aspect_ratio=decrease:in_color_matrix=bt709:out_color_matrix=bt709",
-         f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2", "setsar=1", f"fps={fps.numerator}/{fps.denominator}"]
+    if centre is not None:  # social version: cover the frame, crop around the subject
+        from export.reframe import reframe_vf
+        f = [reframe_vf(w, h, centre[0], centre[1])]
+    else:
+        f = [f"scale={w}:{h}:force_original_aspect_ratio=decrease:in_color_matrix=bt709:out_color_matrix=bt709",
+             f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2", "setsar=1"]
+    if abs(speed - 1.0) > 1e-9:  # slow motion: stretch the source's timestamps
+        f.append(f"setpts={1.0 / speed:.6f}*PTS")
+    f.append(f"fps={fps.numerator}/{fps.denominator}")
     if lut:
         f.append(f"lut3d=file='{lut.replace(chr(92), '/').replace(':', chr(92) + ':')}'")
     for e in shot.effects:
@@ -112,22 +120,29 @@ def _render_picture(segments: list[tuple[Optional[str], int, int, Optional[str]]
 
 def render_preview(result: SyncResult, plan: EditPlan, out_path: str, width: int = 1280,
                    luts: Optional[dict[str, str]] = None, workers: int = 4,
-                   progress: Optional[Callable[[int, int], None]] = None) -> dict:
+                   progress: Optional[Callable[[int, int], None]] = None,
+                   aspect: Optional[tuple[int, int]] = None, centres: Optional[list[tuple[float, float]]] = None) -> dict:
+    """`aspect` = (w, h) of a social version (e.g. 1080x1920) scaled to `width`; `centres` = the
+    source point to keep centred, per shot (export/reframe.py)."""
     ffmpeg = find_tool("ffmpeg")
     encoder = pick_encoder(ffmpeg)
     fps = Fraction(plan.fps_num, plan.fps_den)
-    height = int(round(width * result.sequence.height / result.sequence.width / 2)) * 2
+    ar_w, ar_h = aspect or (result.sequence.width, result.sequence.height)
+    height = int(round(width * ar_h / ar_w / 2)) * 2
     clips = {c.clip_id: c for c in result.clips}
     luts = luts or {}
     tmp = tempfile.mkdtemp(prefix="autosync_preview_")
     try:
         segs = []
-        for s in plan.shots:
+        for i, s in enumerate(plan.shots):
             n = s.end - s.start
             if s.kind == "gap" or not s.clip_id:
                 segs.append((None, 0, n, None))
             else:
-                segs.append((clips[s.clip_id].path, s.src_in, n, _shot_filter(s, width, height, fps, luts.get(s.clip_id))))
+                ctr = centres[i] if (aspect and centres) else ((0.5, 0.5) if aspect else None)
+                speed = getattr(s, "speed", 1.0) or 1.0
+                segs.append((clips[s.clip_id].path, s.src_in, n,
+                             _shot_filter(s, width, height, fps, luts.get(s.clip_id), ctr, speed)))
         picture = _render_picture(segs, fps, width, height, encoder, tmp, workers, progress)
         total_s = float(Fraction(plan.duration_frames) / fps)
         out_tmp = out_path + ".tmp.mp4"
@@ -146,7 +161,9 @@ def render_preview(result: SyncResult, plan: EditPlan, out_path: str, width: int
 
 def render_ad_preview(plan, clip_paths: dict[str, str], out_path: str, width: int = 1280, height: int = 720,
                       luts: Optional[dict[str, str]] = None, music_gain_db: float = -12.0, workers: int = 4,
-                      progress: Optional[Callable[[int, int], None]] = None) -> dict:
+                      progress: Optional[Callable[[int, int], None]] = None,
+                      centres: Optional[list[tuple[float, float]]] = None) -> dict:
+    """`centres` given = a social version: each shot covers width x height around its centre point."""
     """Ad preview: shots in script order (black for missing shots), each dialogue shot's own
     sound, the VO recording per line, the music bed underneath."""
     ffmpeg = find_tool("ffmpeg")
@@ -156,13 +173,17 @@ def render_ad_preview(plan, clip_paths: dict[str, str], out_path: str, width: in
     tmp = tempfile.mkdtemp(prefix="autosync_adpreview_")
     try:
         segs = []
-        for a in plan.shots:
+        for k, a in enumerate(plan.shots):
             n = a.end - a.start
             if a.status == "missing" or not a.clip_id:
                 segs.append((None, 0, n, None))
             else:
-                vf = [f"scale={width}:{height}:force_original_aspect_ratio=decrease:in_color_matrix=bt709:out_color_matrix=bt709",
-                      f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2", "setsar=1", f"fps={fps.numerator}/{fps.denominator}"]
+                if centres is not None:
+                    from export.reframe import reframe_vf
+                    vf = [reframe_vf(width, height, centres[k][0], centres[k][1]), f"fps={fps.numerator}/{fps.denominator}"]
+                else:
+                    vf = [f"scale={width}:{height}:force_original_aspect_ratio=decrease:in_color_matrix=bt709:out_color_matrix=bt709",
+                          f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2", "setsar=1", f"fps={fps.numerator}/{fps.denominator}"]
                 lut = luts.get(a.clip_id)
                 if lut:
                     vf.append(f"lut3d=file='{lut.replace(chr(92), '/').replace(':', chr(92) + ':')}'")

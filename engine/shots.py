@@ -25,7 +25,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 from scipy import ndimage
 
-from .colour import LabStats, lab_stats, pool_stats
+from .colour import LabStats, lab_stats, luma, pool_stats
 from .probe import ProbeError, find_tool, probe, run_tool
 
 SHOTS_REVISION = 2  # 2: face (skin) colour statistics
@@ -162,6 +162,7 @@ class FaceDetector:
         if not os.path.isfile(MODEL_FILE):
             return None
         import cv2
+        cv2.setNumThreads(1)  # our worker threads run in parallel already; no nested OpenCV threads
         det = cv2.FaceDetectorYN.create(MODEL_FILE, "", (w, h), score, 0.3, 50)
         return FaceDetector(det, w, h)
 
@@ -193,7 +194,7 @@ def analyse_frames(frames: np.ndarray, w: int, h: int, ss: ShotSettings, fd: Opt
     prev_small = None
     for i, fr in enumerate(frames):
         rgb = fr.astype(np.float32) / 255.0
-        y = rgb @ _Y
+        y = luma(rgb)
         p05, p95 = np.percentile(y, [5, 95])
         lap = ndimage.laplace(y)
         sharp = float(np.log10(lap.var() * 255 * 255 + 1e-6))
@@ -228,7 +229,7 @@ def signature(frames: np.ndarray) -> list[float]:
     """Median 32x18 luma thumbnail, zero-mean unit-norm: the camera setup's background."""
     thumbs = []
     for fr in frames[:: max(1, len(frames) // 24)]:
-        y = (fr.astype(np.float32) / 255.0) @ _Y
+        y = luma(fr.astype(np.float32) / 255.0)
         hh, ww = y.shape
         ys = np.linspace(0, hh, 19).astype(int)
         xs = np.linspace(0, ww, 33).astype(int)

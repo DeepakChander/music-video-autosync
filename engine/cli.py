@@ -247,9 +247,10 @@ def _cmd_ad(a: argparse.Namespace) -> int:
     cache = None if a.no_cache else (a.cache or default_cache_dir())
     try:
         cut = run_ad_cut(a.script, clips, fps, out_dir, takelog_path=a.takelog, music_path=a.music, vo_path=a.vo,
-                         settings=AdSettings(target_s=a.target), transcribe=not a.no_transcribe, model=a.model,
+                         settings=AdSettings(target_s=a.target, language=a.language), transcribe=not a.no_transcribe, model=a.model,
                          cache_dir=cache, analyse_shots=a.analyse_shots,
-                         progress=None if a.quiet else (lambda ph, d, n, cur: print(f"{ph} {d}/{n} {cur}", file=sys.stderr)))
+                         progress=None if a.quiet else (lambda ph, d, n, cur: print(f"{ph} {d}/{n} {cur}", file=sys.stderr)),
+                         cutdowns=a.cutdown or [])
     except (AdCutError, ScriptError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 3
@@ -273,6 +274,13 @@ def _cmd_ad(a: argparse.Namespace) -> int:
         info = render_ad_preview(plan, {c.clip_id: c.path for c in cut.clips}, a.preview, width=a.preview_width,
                                  height=int(round(a.preview_width * a.height / a.width / 2)) * 2)
         print(f"Wrote {info['path']} ({info['width']}x{info['height']}, {info['encoder']})")
+    for v in cut.versions:
+        vname = ad_sequence_name(a.script, v["length"])
+        print(f"{v['length']:g} s version ({v['how']}): {v['plan'].stats['matched']} shots, dropped {', '.join(v['dropped']) or 'none'}")
+        if a.out:
+            vout = os.path.splitext(a.out)[0] + f"_{v['length']:g}s.xml"
+            write_ad_xml(v["plan"], cut.clips, vout, vname, a.width, a.height, cut.music_s, cut.vo_s)
+            print(f"  Wrote {vout}")
     return 0
 
 
@@ -358,8 +366,11 @@ def build_parser() -> argparse.ArgumentParser:
     ad.add_argument("--target", type=float, help="spot length in seconds (15, 30, 60...)")
     ad.add_argument("--takelog", help="take log CSV: clip, shot, take, circled, notes")
     ad.add_argument("--music", help="music bed (cuts of picture-only shots snap to its beats)")
+    ad.add_argument("--cutdown", type=float, nargs="*", help="shorter versions too, e.g. --cutdown 15 6")
     ad.add_argument("--vo", help="VO recording (VO shots last as long as their line)")
-    ad.add_argument("--model", default="base.en", choices=["tiny.en", "base.en", "small.en"], help="speech model")
+    ad.add_argument("--language", default="en", help="dialogue language: en, auto, or a code such as hi, es, fr, de")
+    ad.add_argument("--model", choices=["tiny.en", "base.en", "small.en", "tiny", "base", "small"],
+                    help="speech model (default: base.en for English, base for other languages)")
     ad.add_argument("--no-transcribe", action="store_true", help="match by take log / file names only")
     ad.add_argument("--analyse-shots", action="store_true", help="pick the best-looking part of picture-only takes")
     ad.add_argument("--out", help="the .xml file to write (File > Import in Premiere)")

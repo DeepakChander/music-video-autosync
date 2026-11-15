@@ -54,6 +54,31 @@ The template also has the columns **order**, **speaker**, **board**, **super** a
 When several takes match: circled first, then the best line delivery, then a logged/named match,
 then the later take, then picture quality (if shots were analysed).
 
+## Languages
+
+**Language** in the panel (or `--language hi` on the command line) sets the dialogue language:
+English uses the English speech model; any other language (Hindi, Spanish, French, Arabic, Tamil,
+Japanese ...) or **Detect automatically** uses Whisper's multilingual model (also 148 MB, downloaded
+once). Matching folds accents (café = cafe) and keeps every script's letters (Devanagari, Arabic,
+Cyrillic, CJK). Numbers are spelled out for English only; in other languages write them the way the
+actor says them, or as digits on both sides.
+
+## Shorter versions (cutdowns)
+
+Tick **Also make: 15 s / 6 s** (or `--cutdown 15 6`). Each version is its own sequence:
+
+- If the script has columns such as **in 15** / **in 6** (marked x / yes / 1), exactly those shots.
+- Otherwise automatically: the end card / packshot (and any shot described as product, logo, hero,
+  title), then the spoken lines, then the opening shot, then picture-only shots in script order
+  while they fit at 1 s each. Lines are never cut. The panel lists the dropped shots per version.
+
+## Social versions
+
+Tick **Social: 9:16 / 1:1 / 4:5**: each is its own sequence of the same cut at 1080x1920,
+1080x1080 or 1080x1350, every shot scaled to fill the frame and centred on the face found in it
+(the shots are analysed for faces automatically when a social version is ticked). **Preview**
+renders any of them as a video.
+
 ## What you get
 
 - Sequence **AutoSync Ad - <script> - <length>** opened in Premiere (or the `.xml` path for File >
@@ -64,6 +89,9 @@ then the later take, then picture quality (if shots were analysed).
   lands on the length **to the frame**. Spoken lines and recorded VO are never cut; if they alone do
   not fit, the panel says by how much.
 - **Render ad preview** makes an MP4 with picture, dialogue, VO and music (music at -12 dB).
+
+When Premiere does not build a sequence from the XML, the panel places the cut itself through
+Premiere's API (same shots, markers; picture-only shots' sound disabled) and reads every shot back.
 
 ## What has been checked
 
@@ -84,5 +112,6 @@ autosync-engine ad --script script.docx --clips ./footage --fps 25 --target 30 \
   --takelog takelog.csv --music bed.wav --vo vo.wav --out ad.xml --preview ad.mp4
 ```
 
-`--model tiny.en | base.en | small.en` (default base.en), `--no-transcribe` (take log and file
-names only), `--analyse-shots` (pick the best-looking part of picture-only takes).
+`--language en|auto|hi|es|...` (default en), `--model tiny|base|small[.en]` (default: base.en for
+English, base otherwise), `--cutdown 15 6`, `--no-transcribe` (take log and file names only),
+`--analyse-shots` (pick the best-looking part of picture-only takes).
